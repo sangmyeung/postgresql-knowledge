@@ -7,7 +7,7 @@ build:
   stage: build
   script:
     - npm install
-    - npm run build
+    - npm run build -- --prefix-paths ${CI_PAGES_URL}
   artifacts:
     paths:
       - public
