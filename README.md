@@ -1,6 +1,6 @@
 # Gatsby Template for GitLab Pages
 
-Examples [Gatsby](https://www.gatsbyjs.org/) website using GitLab pages.
+Examples [Gatsby](https://www.gatsbyjs.org/) website using [GitLab pages](https://about.gitlab.com/product/pages/).
 
 ## 🚀 Quick start
 
