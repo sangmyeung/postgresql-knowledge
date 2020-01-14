@@ -6,6 +6,7 @@ variables:
 build:
   stage: build
   script:
+    - CI=true
     - npm install
     - gatsby build --prefix-paths
   artifacts:
