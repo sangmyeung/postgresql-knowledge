@@ -8,7 +8,7 @@ build:
   script:
     - CI=true
     - npm install
-    - gatsby build --prefix-paths
+    - npm run build --prefix-paths
   artifacts:
     paths:
       - public
