@@ -7,7 +7,7 @@ build:
   stage: build
   script:
     - npm install
-    - npm run build -- --prefix-paths
+    - gatsby build --prefix-paths
   artifacts:
     paths:
       - public
