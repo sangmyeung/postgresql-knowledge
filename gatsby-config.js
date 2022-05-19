@@ -1,9 +1,15 @@
 module.exports = {
   pathPrefix: `/gatsby/`,
   siteMetadata: {
-    title: `Gatsby Default Starter`,
-    description: `Kick off your next, great Gatsby project with this default starter. This barebones starter ships with the main Gatsby configuration files you might need.`,
+    title: `PostgreSQL Knowledge`,
+    description: `Let's learn PostgreSQL`,
     author: `@gatsbyjs`,
+    menuLinks: [
+      {
+        name: `page2`,
+        link: `/page-2`
+      },
+    ]
   },
   plugins: [
     `gatsby-plugin-react-helmet`,

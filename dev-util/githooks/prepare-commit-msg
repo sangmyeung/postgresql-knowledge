@@ -1,0 +1,78 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import sys
+import os
+import re
+
+import commit_hook_common as commit_common
+import hook_common
+
+# Message template for commit
+predefined_commit_msg = (
+    '#\n'
+    '# Fill out the contents from below in english. All required.\n'
+    '#\n'
+    '# [Instructions for writing]\n'
+    '# Subject:\n'
+    '#  - Write to 70 characters or less (up to the marked position)\n'
+    '#  - Write in one sentence\n'
+    '#  - Do not use period at the end of subject\n'
+    '# Classification:\n'
+    '#  - Commit in one classification if possible\n'
+    '#  - If included in multiple classifications, seperate by using ,\n'
+    '#    (ex) Error Resolution, Debug\n'
+    '# Contents:\n'
+    '#  - Write a newline per 80 characters\n'
+    '#  - Rather than how you did it, write what you did and why you did it\n'
+    '# Test case:\n'
+    '#  - Write a newline per 80 characters\n'
+    '#  - Write SQL/Script/Command based reproduction steps\n'
+    '#  - Write expected results\n'
+    '#\n'
+)
+
+for qs in commit_common.QUESTIONS:
+    # Question in the form of ".Q1) ~~~". '.Q' is the delimiter to split Questions.
+    predefined_commit_msg += '.%s) %s\n\n' % (qs.display_id, qs.question_msg)
+
+NORMAL_COMMIT_TYPE = 'normal'
+
+# argv[1]: commit msg temp file (Mandatory)
+#
+# argv[2]: commit type
+#   message     if -m or -F option was given
+#   template    if a -t option was given 
+#               or the configuration option commit.template is set
+#   merge       if the commit is a merge or a .git/MERGE_MSG file exists
+#   squash      if a .git/SQUASH_MSG file exists 
+#   commit
+#
+# argv[3]: followed by a commit SHA
+#          (if a -c, -C or --amend option was given)
+file_path_including_commit_msg = sys.argv[1]
+commit_type = sys.argv[2] if len(sys.argv) > 2 else NORMAL_COMMIT_TYPE
+commit_sha_to_amend = sys.argv[3] if len(sys.argv) > 3 else ''
+
+
+def changeCommitMessageHeader(new_commit_type, file_to_write):
+    with open(file_to_write, 'r+') as f:
+        prev_commit_msg_by_lines = f.readlines()
+
+        if(len(prev_commit_msg_by_lines) > 0 and \
+           prev_commit_msg_by_lines[0].startswith('# Commit Type:')):
+            f.write('# Commit Type: %s\n' % new_commit_type)
+
+
+def writeFirstCommitMessageToFile(commit_type, commit_msg, file_to_write):
+    with open(file_to_write, 'w') as f:
+        f.write('# Commit Type: %s\n' % commit_type)
+        f.write(commit_msg)
+
+
+# For 'messge' and 'merge', the received msg is directly used as the commit msg
+if commit_type == NORMAL_COMMIT_TYPE:
+    writeFirstCommitMessageToFile(
+        commit_type, predefined_commit_msg, file_path_including_commit_msg)
+else:
+    changeCommitMessageHeader(commit_type, file_path_including_commit_msg)

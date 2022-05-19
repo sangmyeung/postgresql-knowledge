@@ -1,0 +1,51 @@
+#!/bin/bash 
+
+env_root=`pwd`
+cd $env_root
+
+export ENV_HOME=$env_root
+export ENV_HOME_NAME=${ENV_HOME##*/}
+
+init_github_info()
+{
+    cur_username=`git config --local user.name`
+    if test -z $cur_username ; then
+      echo "Configuring gitlab account information"
+      read -p "Enter gitlab username : " GITLAB_USERNAME
+      read -p "Enter gitlab email    : " GITLAB_EMAIL
+
+      git config --local user.name ${GITLAB_USERNAME} 
+      git config --local user.email ${GITLAB_EMAIL}
+      git config --local core.editor "vim"
+    fi
+}
+
+# Copy git hook scripts if it has changed
+if test ! -z $env_root/.git ; then
+    if [ -d $env_root/dev-util/githooks ]; then
+        src_dir=$env_root/dev-util/githooks
+        tar_dir=$env_root/.git/hooks
+    
+        for file in `\ls $src_dir`; do
+            sfile=$src_dir/$file
+            tfile=$tar_dir/$file
+    
+            if [ -f "$tfile" ]; then
+                cmp $sfile $tfile > /dev/null 2>&1
+                if [ "$?" = "0" ]; then
+                    continue;
+                fi
+            fi
+    
+            #copy if file changed
+            echo "Copying git script... $file"
+            \cp -p -f $sfile $tfile
+        done
+    fi
+    /bin/sh $env_root/dev-util/gitconfig.sh || 
+        echo "No dev-util."
+fi
+
+[ "$TERM" != 'dumb'  ] && PS1='\[\033[1;32m\][$ENV_HOME_NAME]\[\033[00m\]:\w\$ '
+
+init_github_info
