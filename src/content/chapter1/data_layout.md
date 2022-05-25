@@ -29,7 +29,7 @@ Home 화면에서도 언급했지만 해당 요약은 Hironobu Suzuki의 blog "T
 - Table을 sequential scan으로 읽을 때는 table file에 있는 block을 차례로 읽으며 line pointers로 dereferencing을 하며 tuple을 읽는다.
 - Table을 index scan으로 읽을 때는 index tuple에 달려있는 tuple id(TID)를 보고 block과 tuple index를 받아 마찬가지로 line pointer를 통해 tuple을 읽는다.
 
-## 1.1. 논리적 Level에서의 Data Layout :brain:
+## 1.1. 논리적 Level에서의 Data Layout :nerd_face:
 
 <img 
   src="postgresql-data-layout.png"
@@ -132,7 +132,21 @@ Furthermore, it reclaims disk space immediately, rather than requiring a subsequ
 </pre>
 그런 점으로 보아 내부 background process에서 해당 file의 descriptor를 열어놓고 있다가 어떤 작업을 진행한 후 delete를 해서 그런 것이 아닌가 생각이 듭니다. 이 부분에 대해서는 추가적으로 조사가 필요해 보이는군요.
 
-TODO: Tablespace 관련 내용 추가하기!
+마지막으로 PostgreSQL의 tablespace에 대해서 소개드리겠습니다. Tablespace는 CREATE TABLESPACE 문을 통해 생성되며 base directory 외부에 있는 target directory에 table이나 index를 저장할 때 사용됩니다. Tablespace는 base directory의 pg_tblspc subdirectory에 symbolic link로 저장됩니다. Tablespace를 생성하면 pg_tblspc subdirectory에 object id를 이름으로 DDL문에서 지정한 target directory를 가리키는 symbolic link가 저장이 됩니다. 
+
+Tablespace의 target directory로 들어가보면 PostgreSQL version-specific한 이름으로 subdirectory가 생성된 것을 볼 수 있습니다. 해당 subdirectory의 naming 규칙은 아래와 같습니다.
+```console
+PG_'Major version'_'Catalogue version number'
+```
+이제 생성된 tablespace에 table을 생성하게 되면 일단 해당 table이 속해있는 database의 object id로 tablespace subdirectory 안에 subdirectory가 생성이 되고, 생성한 table의 table file이 그 안에 생성됩니다.
+```sql
+sampledb=# CREATE TABLE newtbl (.....) TABLESPACE new_tblspc;
+
+sampledb=# SELECT pg_relation_filepath('newtbl');
+             pg_relation_filepath             
+---------------------------------------------
+ pg_tblspc/16386/PG_14_202011044/16384/18894
+```
 
 ## 1.3. Table File의 내부 구조 :page_with_curl:
 TODO :rainbow:
