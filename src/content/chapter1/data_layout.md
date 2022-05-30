@@ -131,21 +131,20 @@ Base directory에는 다양한 file과 subdirectory가 생성됩니다. 아래�
     |base/|Database subdirectory가 들어있는 subdirectory|
     |global/|pg_database나 pg_control 같은 cluster-wide table이 들어있는 subdirectory|
     |pg_commit_ts/|Transaction commit timestamp data가 들어있는 subdirectory|
-    |pg_dynshmem/|Dynamic shared memory subsystem이 사용한 file을 저정하는 subdirectory|
-    |pg_logical|TODO|
-    |pg_multixact|TODO|
-    |pg_notify|TODO|
-    |pg_repslot|TODO|
-    |pg_serial|TODO|
-    |pg_snapshots|TODO|
-    |pg_stat|TODO|
-    |pg_stat_tmp|TODO|
-    |pg_subtrans|TODO|
-    |pg_tblspc|TODO|
-    |pg_twophase|TODO|
-    |pg_wal|TODO|
-    |pg_xact|TODO|
-    |pg_xlog|TODO|
+    |pg_dynshmem/|Dynamic shared memory subsystem이 사용한 file을 저장하는 subdirectory|
+    |pg_logical|Logical decoding을 위한 상태 정보를 담는 subdirectory|
+    |pg_multixact|Multitransaction의 상태 정보를 담는 subdirectory|
+    |pg_notify|LISTEN/NOTIFY 상태 정보를 담는 subdirectory|
+    |pg_repslot|Replication slot data를 담는 subdirectory|
+    |pg_serial|Commit된 serializable transaction 정보를 담는 subdirectory|
+    |pg_snapshots|pg_export_snapshot 함수를 통해 export된 snapshot을 저장하는 subdirectory|
+    |pg_stat|Statistics collector process가 영구 저장하는 file을 담는 subdirectory|
+    |pg_stat_tmp|Statistics collector process가 임시 저장하는 file을 담는 subdirectory|
+    |pg_subtrans|Subtransaction 상태 정보를 담는 subdirectory|
+    |pg_tblspc|Tablespace에 대한 symbolic link를 담는 subdirectory|
+    |pg_twophase|Prepared transaction의 상태 정보를 담는 subdirectory|
+    |pg_wal|WAL segment file을 저장하는 subdirectory|
+    |pg_xact|Transaction의 commit 상태 정보를 담는 subdirectory|
   </details>
 
 ### 1.2.2. Database and Objects
