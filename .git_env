@@ -10,12 +10,12 @@ init_github_info()
 {
     cur_username=`git config --local user.name`
     if test -z $cur_username ; then
-      echo "Configuring gitlab account information"
-      read -p "Enter gitlab username : " GITLAB_USERNAME
-      read -p "Enter gitlab email    : " GITLAB_EMAIL
+      echo "Configuring github account information"
+      read -p "Enter github username : " GITHUB_USERNAME
+      read -p "Enter github email    : " GITHUB_EMAIL
 
-      git config --local user.name ${GITLAB_USERNAME} 
-      git config --local user.email ${GITLAB_EMAIL}
+      git config --local user.name ${GITHUB_USERNAME} 
+      git config --local user.email ${GITHUB_EMAIL}
       git config --local core.editor "vim"
     fi
 }
