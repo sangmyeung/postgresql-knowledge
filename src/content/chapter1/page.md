@@ -62,7 +62,7 @@ Home 화면에서도 언급했지만 해당 요약은 Hironobu Suzuki의 blog "T
 </ul>
 
 ---
-## 1.1. 논리적 Level에서의 Data Layout :nerd_face:
+## 1.1. Logical View of Data Layout :nerd_face:
 ### 1.1.1. Database Cluster
 Top-down approach로 가보겠습니다. 최상위 level에서는 database cluster가 있습니다. Database cluster는 database community에서 흔히 말하는 여러 개의 database instance를 연결하여 하나의 system처럼 동작하게 하는 clustering 기법이 아니라, 단순히 database의 묶음을 통칭하며 하나의 PostgreSQL server가 hosting하고 관리하는 대상입니다. 
 
@@ -86,7 +86,7 @@ Database 아래에는 schema가 있습니다. 다른 RDBMS에서와 같이 Postg
 </details>
 
 ---
-## 1.2. OS Level에서의 Data Layout :floppy_disk:
+## 1.2. System View of Data Layout :floppy_disk:
 ### 1.2.1. Database Cluster
 다시 한번 database cluster에서부터 시작하겠습니다. Database cluster는 하나의 directory로 mapping되며 그 directory를 base directory라고 부릅니다. PostgreSQL이 제공하는 initdb utility를 사용하여 database cluter를 생성할 때 DATADIR라는 변수명으로 directory path를 인자로 주는데, 해당 directory가 base directory가 됩니다. 주로 base directory는 PGDATA 환경변수에 저장됩니다. 
 - <details>
@@ -228,7 +228,7 @@ Tablespace는 base directory의 pg_tblspc subdirectory에 symbolic link로 저�
 </details>
 
 ---
-## 1.3. Table File의 내부 구조 :page_with_curl:
+## 1.3. Internal Structure of Table File :page_with_curl:
 PostgreSQL은 data를 file에 저장할 때 고정 크기의 block으로 나눠 저장합니다. Block의 default 크기는 8KB이며 server를 compile할 때 configure script의 parameter로 최대 32KB까지 크기를 변경할 수 있습니다 (run-time configure는 제공되지 않습니다). 예를 들어, CREATE TABLE 문을 통해 table을 생성하면 size가 0 byte인 table file이 생성됩니다. 그 후 8KB 이하 크기의 data를 table에 적재하면 table file의 크기는 8KB로 증가하게 됩니다. 이 후 8KB 배수의 크기를 넘겨 data를 적재할 때마다 table file의 크기는 8KB 씩 증가하게 되는 방식입니다. Table file를 구성하는 block에는 3개의 부분으로 분리됩니다.
 - Block Header: PageHeaderData 구조체가 table file buffer 시작 위치에 할당되며 size는 24 bytes 입니다. Block에 대한 일반적인 정보가 저장되고, 특히 pd_lower, pd_upper 변수를 통해 가용 공간에 대한 관리를 합니다.
   - <details>
@@ -287,8 +287,8 @@ PostgreSQL은 data를 file에 저장할 때 고정 크기의 block으로 나눠 
 </details>
 
 ---
-## 1.4. Table File 읽기/쓰기 :memo:
-### 1.4.1. Table File 쓰기
+## 1.4. Read and Write Table File :memo:
+### 1.4.1. Write Table File
 Table file을 쓸 때는 우선 block header에 적힌 freespace에 대한 정보를 읽어야 합니다. Block header에는 pd_lower와 pd_upper 변수가 있는데 각각 마지막 line pointer의 끝부분 위치와 마지막 tuple이 append된 앞부분 위치를 offset 형태로 들고 있습니다. 이 때 append 할 새로운 tuple이 들어오면 우선 해당 tuple의 크기가 freespace 보다 큰 경우 새로운 block을 받아 append를 하고, 크기가 freespace 보다 작은 경우 pd_upper offset 위치에서부터 tuple의 length 만큼을 앞당긴 위치에 tuple을 append 합니다. 그리고 새롭게 append된 tuple의 offset을 pd_lower 위치에 line pointer를 추가하여 기록해줍니다.
 
 Suzuki의 블로그에선 생략되었고 추가적으로 코드를 살펴봐야겠지만 tuple을 append 할 때 word size에 맞춰 alignment를 고려하지 않을 수 없을 것입니다. Alignment를 무시하고 append를 하게 되면 CPU가 tuple을 읽어올 때 미정의 동작이 발생하거나 불필요한 reads가 발생하기 때문입니다. 이는 tuple 뿐만 아니라 tuple 안에 있는 attribute도 마찬가지입니다. Tuple의 경우에는 단순히 alignment에 맞춰 시작점을 잡고 line pointer에 기록해두면 문제가 없지만, attribute의 경우에는 padding을 넣거나 attribute의 순서를 변경하여 alignment를 맞춰졌을 것 같습니다. PostgreSQL은 어떻게 alignment 문제를 해결했는지 코드로 확인해봐야 할 것 같습니다. :thinking:
@@ -303,9 +303,7 @@ Suzuki의 블로그에선 생략되었고 추가적으로 코드를 살펴봐야
   />
 </details>
 
-
-
-### 1.4.2. Table File 읽기
+### 1.4.2. Read Table File
 Table file을 읽는 방법은 크게 두 가지로 나눠질 수 있습니다. 첫 번째는 전체 table을 순차적으로 읽는 sequential scan입니다. Sequential scan으로 읽을 때는 pg_class table의 relfilenode 컬럼에 기입된 값을 사용하여 읽어야 하는 file을 찾고, file 안에 있는 block을 차례로 읽습니다. Block 안에서는 시작점에서부터 block header 크기만큼 offset을 건너뛰어 line pointer array를 찾고, line pointer들을 하나씩 읽으며 실제 tuple의 위치로 derefencing 합니다. Line pointer array를 모두 iterating하면 다음 block으로 넘어가 같은 방법으로 모든 block에 대해 처리가 끝날 때까지 sequential read를 진행하게 됩니다.
 
 Table을 읽는 두 번째 방법은 index를 통해 원하는 tuple에 찾아가는 index scan입니다. Index를 따라가 원하는 index tuple에 도착하면 해당 tuple에는 실제 tuple이 위치한 곳을 알려주는 tuple id(TID)가 존재합니다. TID에는 block index와 tuple index가 있는데, table file 안에서 tuple이 몇 번째 block에 있는지, block 안에 몇 번째 line pointer가 해당 tuple의 offset 정보를 가지고 있는지를 TID를 통해서 알 수 있게 됩니다. TID를 통해 얻게된 정보로 알맞을 line pointer에 접근하고 다시 한번 원하는 tuple에 dereferencing 하여 tuple을 읽게 됩니다.
