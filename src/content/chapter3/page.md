@@ -4,9 +4,167 @@
 ---
 ## 3.0. TL;DR :shrug:
 3장 내용 요약!
+<ul style="list-style-type: none">
+  <li>
+  <details>
+    <summary>  </summary> 
+    <ul>
+      <li> </li>
+      <li> </li>
+      <li> </li>
+    </ul>
+  </details>
+  </li>
+</ul>
+
 
 ---
 ## 3.1. Overview :world_map:
+PostgreSQL은 parallel query를 제외한 모든 query를 backend process에서 처리합니다. Backend process는 아래 component로 나눠집니다.
+- Parser: 평문으로 되어 있는 SQL statement의 syntax를 검증하고, 다음 단계에서 처리 가능한 형태의 자료구조인 parser tree를 생성하는 역할을 맡습니다.
+- Analyzer: Parser tree를 통해 query의 semantic을 검증하고, 다음 단계에서 처리 가능한 형태의 자료구조인 query tree를 생성하는 역할을 맡습니다. 
+- Rewriter: Query tree를 정해진 rule을 통해 변형하는 역할을 맡습니다. View를 조회하는 subtree를 inlining 한다던지 또는 불필요하거나 중복적인 expression을 제거하여 tree를 간소화 하는 일을 해당 단계에서 진행합니다.
+- Planner: Query tree에서 요구하는 data 가공을 제일 효율적으로 수행할 수 있는 operation들의 조합을 찾아 plan tree로 생성하는 역할을 맡습니다.
+- Executor: Plan tree의 각 plan node에 대응되는 operation을 수행하는 역할을 맡습니다.
+
+### 3.1.1 Parser
+Parser는 평문으로 되어 있는 SQL statement의 syntax check를 하고 parse tree를 생성하는 일을 맡고 있습니다. 여기서 syntax check란 SQL 문법에 알맞게 query가 작성되었는지를 검증하는 것을 뜻합니다. 예를 들어 SELECT, FROM, WHERE 절이 적절한 위치에 쓰여졌는지, 또는 projection 할 column list에 쉼표를 잘 넣었는지 등을 확인합니다. Column과 table의 이름이 알맞게 쓰여졌는지는 syntax check 단계에서 하지 않고 semantic check 단계에서 진행되며, 해당 책임은 analyzer module에 있습니다. 
+
+Parser tree는 평문 SQL의 요소를 논리적으로 구분하여 저장한 자료구조입니다. 다만 하나의 구조체로 표현되는 것은 아니고 statement의 형태 마다 대응되는 구조체가 있으며, 그것들의 집합을 parser tree라고 부릅니다. 예를 들어 <a href="https://github.com/postgres/postgres/blob/master/src/include/nodes/parsenodes.h">parsenodes.h</a> 에 정의된 *Stmt 구조체들이 parser tree라는 카테고리를 구성하는 요소라고 할 수 있습니다.  
+
+<details>
+  <summary>InsertStmt</summary>
+
+  ```c
+  typedef struct InsertStmt
+  {
+    NodeTag    type;
+    RangeVar   *relation;      /* relation to insert into */
+    List       *cols;          /* optional: names of the target columns */
+    Node       *selectStmt;    /* the source SELECT/VALUES, or NULL */
+    OnConflictClause *onConflictClause; /* ON CONFLICT clause */
+    List       *returningList; /* list of expressions to return */
+    WithClause *withClause;    /* WITH clause */
+    OverridingKind override;   /* OVERRIDING clause */
+  } InsertStmt;
+  ```
+</details>
+<details>
+  <summary>DeleteStmt</summary>
+
+  ```c
+  typedef struct DeleteStmt
+  {
+    NodeTag    type;
+    RangeVar   *relation;      /* relation to delete from */
+    List	     *usingClause;   /* optional using clause for more tables */
+    Node	     *whereClause;   /* qualifications */
+    List	     *returningList; /* list of expressions to return */
+    WithClause *withClause;    /* WITH clause */
+  } DeleteStmt;
+  ```
+</details>
+<details>
+  <summary>UpdateStmt</summary>
+
+  ```c
+  typedef struct UpdateStmt
+  {
+    NodeTag    type;
+    RangeVar   *relation;      /* relation to update */
+    List	     *targetList;    /* the target list (of ResTarget) */
+    Node	     *whereClause;   /* qualifications */
+    List	     *fromClause;    /* optional from clause for more tables */
+    List	     *returningList; /* list of expressions to return */
+    WithClause *withClause;    /* WITH clause */
+  } UpdateStmt;
+  ```
+</details>
+<details>
+  <summary>MergeStmt</summary>
+
+  ```c
+  typedef struct MergeStmt
+  {
+    NodeTag    type;
+    RangeVar   *relation;         /* target relation to merge into */
+    Node	     *sourceRelation;   /* source relation */
+    Node	     *joinCondition;    /* join condition between source and target */
+    List	     *mergeWhenClauses; /* list of MergeWhenClause(es) */
+    WithClause *withClause;       /* WITH clause */
+  } MergeStmt;
+  ```
+</details>
+<details>
+  <summary>SelectStmt</summary> 
+
+  ```c
+  typedef struct SelectStmt
+  {
+    NodeTag    type;
+
+    /*
+     * These fields are used only in "leaf" SelectStmts.
+     */
+    List       *distinctClause; /* NULL, list of DISTINCT ON exprs, or
+                                 * lcons(NIL,NIL) for all (SELECT DISTINCT) */
+    IntoClause *intoClause;     /* target for SELECT INTO */
+    List       *targetList;     /* the target list (of ResTarget) */
+    List       *fromClause;     /* the FROM clause */
+    Node       *whereClause;    /* WHERE qualification */
+    List       *groupClause;    /* GROUP BY clauses */
+    bool        groupDistinct;  /* Is this GROUP BY DISTINCT? */
+    Node       *havingClause;   /* HAVING conditional-expression */
+    List       *windowClause;   /* WINDOW window_name AS (...), ... */
+
+    /*
+     * In a "leaf" node representing a VALUES list, the above fields are all
+     * null, and instead this field is set.  Note that the elements of the
+     * sublists are just expressions, without ResTarget decoration. Also note
+     * that a list element can be DEFAULT (represented as a SetToDefault
+     * node), regardless of the context of the VALUES list. It's up to parse
+     * analysis to reject that where not valid.
+     */
+    List       *valuesLists;    /* untransformed list of expression lists */
+
+    /*
+     * These fields are used in both "leaf" SelectStmts and upper-level
+     * SelectStmts.
+    */
+    List       *sortClause;     /* sort clause (a list of SortBy's) */
+    Node       *limitOffset;    /* # of result tuples to skip */
+    Node       *limitCount;     /* # of result tuples to return */
+    LimitOption limitOption;    /* limit type */
+    List       *lockingClause;  /* FOR UPDATE (list of LockingClause's) */
+    WithClause *withClause;     /* WITH clause */
+
+    /*
+     * These fields are used only in upper-level SelectStmts.
+     */
+    SetOperation op;          /* type of set op */
+    bool         all;         /* ALL specified? */
+    struct SelectStmt *larg;  /* left child */
+    struct SelectStmt *rarg;  /* right child */
+    /* Eventually add fields for CORRESPONDING spec here */
+  } SelectStmt;
+  ```
+</details>
+<br/>
+
+간단한 예시를 통해 SelectStmt가 어떻게 구성되는지 확인해보겠습니다. 아래 예시와 같은 SQL이 주어졌다고 가정해봅시다.
+```sql
+testdb=# SELECT id, data FROM tbl_a WHERE id < 300 ORDER BY data;
+```
+이때 SelectStmt는 아래와 같이 생성됩니다.
+
+<img
+  src="https://www.interdb.jp/pg/img/fig-3-02.png"
+  alt="Parse tree example"
+  style="display: inline-block; margin: 0 auto; width: 1024px"
+/>
+
+Select list에 있는 id, data column들이 targetList에 담기게 됩니다. fromClause에는 tbl_a table이 담기고, whereClause에는 id < 300 조건문이 expression tree로 담기게 됩니다. 마지막으로 query의 ORDER BY 문이 sortClause에 담기는 것을 확인할 수 있습니다.
+
 
 ---
 ## 3.2. Cost-based Optimization :coin:

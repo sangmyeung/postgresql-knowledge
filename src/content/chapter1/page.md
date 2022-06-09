@@ -6,7 +6,7 @@ Home 화면에서도 언급했지만 해당 요약은 Hironobu Suzuki의 blog "T
 ---
 ## 1.0. TL;DR :shrug:
 1장 내용 요약!
-<ul style="list-style-type: none;">
+<ul style="list-style-type: none">
   <li>
   <details>
     <summary> Database는 database object들의 collection이다. </summary> 
@@ -239,16 +239,16 @@ PostgreSQL은 data를 file에 저장할 때 고정 크기의 block으로 나눠 
       typedef struct PageHeaderData
       {
         /* XXX LSN is member of *any* block, not only page-organized ones */
-        PageXLogRecPtr pd_lsn;		/* LSN: next byte after last byte of xlog
-                      * record for last change to this page */
-        uint16		pd_checksum;	/* checksum */
-        uint16		pd_flags;		/* flag bits, see below */
-        LocationIndex pd_lower;		/* offset to start of free space */
-        LocationIndex pd_upper;		/* offset to end of free space */
-        LocationIndex pd_special;	/* offset to start of special space */
-        uint16		pd_pagesize_version;
-        TransactionId pd_prune_xid; /* oldest prunable XID, or zero if none */
-        ItemIdData	pd_linp[FLEXIBLE_ARRAY_MEMBER]; /* line pointer array */
+        PageXLogRecPtr pd_lsn;       /* LSN: next byte after last byte of xlog
+                                      * record for last change to this page */
+        uint16         pd_checksum;  /* checksum */
+        uint16         pd_flags;     /* flag bits, see below */
+        LocationIndex  pd_lower;     /* offset to start of free space */
+        LocationIndex  pd_upper;     /* offset to end of free space */
+        LocationIndex  pd_special;   /* offset to start of special space */
+        uint16         pd_pagesize_version;
+        TransactionId  pd_prune_xid; /* oldest prunable XID, or zero if none */
+        ItemIdData     pd_linp[FLEXIBLE_ARRAY_MEMBER]; /* line pointer array */
       } PageHeaderData;
       ```
     </details>
@@ -260,19 +260,19 @@ PostgreSQL은 data를 file에 저장할 때 고정 크기의 block으로 나눠 
     /* @src/include/storage/itemid.h */
     typedef struct ItemIdData
     {
-      unsigned	lp_off:15,		/* offset to tuple (from start of page) */
-                lp_flags:2,		/* state of line pointer, see below */
-                lp_len:15;		/* byte length of tuple */
+      unsigned  lp_off:15,    /* offset to tuple (from start of page) */
+                lp_flags:2,   /* state of line pointer, see below */
+                lp_len:15;    /* byte length of tuple */
     } ItemIdData;
 
     /*
-    * lp_flags has these possible states.  An UNUSED line pointer is available
-    * for immediate re-use, the other states are not.
-    */
-    #define LP_UNUSED		0		/* unused (should always have lp_len=0) */
-    #define LP_NORMAL		1		/* used (should always have lp_len>0) */
-    #define LP_REDIRECT		2		/* HOT redirect (should have lp_len=0) */
-    #define LP_DEAD			3		/* dead, may or may not have storage */
+     * lp_flags has these possible states.  An UNUSED line pointer is available
+     * for immediate re-use, the other states are not.
+     */
+    #define LP_UNUSED   0   /* unused (should always have lp_len=0) */
+    #define LP_NORMAL   1   /* used (should always have lp_len>0) */
+    #define LP_REDIRECT 2   /* HOT redirect (should have lp_len=0) */
+    #define LP_DEAD     3   /* dead, may or may not have storage */
     ```
   </details>
 - Tuples: 실제 record data를 담고 있으며 block의 끝지점부터 역방향으로 할당됩니다. Tuple 내부에는 실제 record data 뿐만 아니라 concurrency control을 위한 meta 정보도 같이 저장됩니다. Tuple의 meta 정보에 대해서는 다음 장에서 소개하겠습니다. 
