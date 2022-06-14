@@ -82,7 +82,15 @@ postgres&gt; pstree -p 9687
 
   PostgreSQL 의 Memory 구조는 Local memory Area , Shared memory Area 두가지로 구분될 수 있습니다. Shared Memory 란 Data Blcok 및 트랜잭션 로그와 같은 정보를 캐싱하는 공간으로 PostgreSQL Server 의 모든 프로세스와 공유되는 영역이기도 합니다. 이와 별개로 프로세스별로 할당되어 공유가 불가능한 Local Memory 영역이 존재하는데 주로 query, vacuum 등의 동작을 수행하기 위한 목적으로 사용됩니다. 데이터베이스를 운영할 때 데이터의 종류와 운영 방식에 따라 메모리 영역할당과 매개변수 조절을 달리 할당해 주어야 하기 때문에 Memory 구조를 이해하는 것은 중요합니다. 이번 섹션에서는 각 메모리 영역에서 어떤 동작을 하는지에 대하여 간단하게 알아보도록 하겠습니다. 
 
-
+<details>
+  <summary><font size="3">Memory architecture in PostgreSQL </font></summary>
+  
+  <img
+    src="https://www.interdb.jp/pg/img/fig-2-02.png"
+    alt="Memory architecture in PostgreSQL"
+    style="display: inline-block; margin: 0 auto; width: 1024px"
+  />
+</details>
 <이미지 TODO>
 
    ## 2.2.1. Local Memory Area 
