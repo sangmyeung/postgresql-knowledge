@@ -78,4 +78,54 @@ postgres&gt; pstree -p 9687
    \--= 09717 postgres postgres: postgres sampledb 192.168.1.100(54964) idle in transaction  
 </pre>
 
-  ## 2.1. Memory Architecture 
+   ## 2.1. Memory Architecture 
+
+  PostgreSQL 의 Memory 구조는 Local memory Area , Shared memory Area 두가지로 구분될 수 있습니다. Shared Memory 란 Data Blcok 및 트랜잭션 로그와 같은 정보를 캐싱하는 공간으로 PostgreSQL Server 의 모든 프로세스와 공유되는 영역이기도 합니다. 이와 별개로 프로세스별로 할당되어 공유가 불가능한 Local Memory 영역이 존재하는데 주로 query, vacuum 등의 동작을 수행하기 위한 목적으로 사용됩니다. 데이터베이스를 운영할 때 데이터의 종류와 운영 방식에 따라 메모리 영역할당과 매개변수 조절을 달리 할당해 주어야 하기 때문에 Memory 구조를 이해하는 것은 중요합니다. 이번 섹션에서는 각 메모리 영역에서 어떤 동작을 하는지에 대하여 간단하게 알아보도록 하겠습니다. 
+
+
+<이미지 TODO>
+
+   ## 2.2.1. Local Memory Area 
+
+개별 backend 프로세스가 할당 받아 사용하는 공간으로 query 를 수행하기 위한 목적으로 사용됩니다.  Local memory Area의 수치는 개별 공간의 크기를 의미하므로 Connection 갯수를 고려하여 할당해야 합니다. 기본적으로 Local Memory 는 session 단위로 할당되지만 트랜잭션 단위로 임의로도 조정이 가능합니다. 
+
+<pre class="prettyprint command">
+--세션 단위 work 메모리 조정 
+SET work_mem = '16MB';
+
+--트랜잭션 단위 메모리 조정
+SET LOCAL wrok_mem = '16MB';
+
+--설정 reset 
+RESET work_mem
+</pre>
+
+
+- <details>
+    <summary> Local memory area </summary>
+    
+    |sub-area|description|references
+    |:---|:---|:---|
+    |Work Memory| Executor 에서 Sort/Hash 동작을 수행할 때, Temp 파일을 사용하기 전에 사용하는 메모리 공간으로 default 값은 4MB 입니다. Sort 작업에는 ORDER BY, DISTICT, MERGE JOIN 등이 있고 Hash 동작에는 HASH JOIN, HASH AGGREGATION, IN SUBQUERY 등이 포함됩니다. chapter3 에서 더 자세히 다루겠지만 Sort/Hash 동작은 빈번하게 발생할 수 있고 여러 Session 에서 과도한 Sort/Hash 연산을 수행할 경우 문제가 발생할 수 있으니 주의가 필요합니다.   | chapter3|
+    |Maintenance Work Memory| PostgreSQL 에서 vacuum 관련작업, 인덱스 생성, 테이블 변경, Foreign Key 추가 등 데이터베이스 유지 관리 작업에 사용되는 메모리로 기본값은 64MB 입니다. vacuum 관련해서는 추후 챕터에서 다루게 될테니 이번 장에서는 Maintenance Work Memory 영역의 역할에 대해서만 숙지하면 좋을 것 같습니다. | chapter6.1|
+    |Temp Buffer Memory| Temporary 테이블에 사용되는 공간으로 default 값은 8 MB 입니다. temp 테이블을 사용할 때에만 할당되며 Session 단위로 할당되는 비공유 메모리 영역이므로 과도하게 Temp Table 사용시 문제가 될 수 있습니다. | |
+    |Catalog Cache| System Catalog의 메타데이터를 이용할 때 사용하는 메모리 영역입니다. 각 세션에서 메타데이터를 조회하는 경우가 빈번하고 그때마다 디스크에서 읽을 경우 데이터베이스의 성능저하가 발생할 수 있기 때문에 개별 메모리 공간을 활용합니다. | |
+    |Optimizer & Excutor| Cahpter 3 에서 더 자세히 다루겠지만 PostgreSQL 에서 Query 를 수행할 최적의 plan 을 찾고 이를 수행하는 역할은 Planner 와 Excutor 가 담당합니다. Planner 와 Excutor 가 동작할 때 필요한 메모리 공간으로 Local memory Area 에 할당되어 수행합니다. |chapter3 |
+  
+  </details>
+
+ ## 2.2.2. Shared Memory Area 
+
+Shared Memory Area 는  데이터를 읽거나 변경하기 위해 사용하는 공용 메모리 영역으로 PsotgreSQL server 가 시작될 때 시스템 메모리에서 할당받으며 종료될 때 다시 시스템 메모리 영역으로 반환됩니다. 이에 대한 자세한 설명을 아래 표에 정리해 놓았습니다.    
+
+ - <details>
+    <summary> Shared memory area </summary>
+    
+    |sub-area|description|references
+    |:---|:---|:---|
+    |Shared Buffer pool|Data 와 Data 의 변경사항을 page 단위로 캐싱하여 I/O 를 빠르게 처리하기 위한 영역입니다. Default 값으로 128MB 로 설정되어있지만 postgresql.conf 의 shared buffers 라는 파라미터를 이용하여 크기를 설정할 수 있고 1GB 이상의 RAM 이 있는 서버의 경우 시스템메모리의 25% 를 권장합니다. Shared buffer 에 기록되는 단위는 우리가 chapter 1 에서 배웠던 page_size 단위 와 동일합니다.(default 8K) Shared buffer 를 사용하는 내부동작에 대해서는 chapter 8 에서 더 자세히 다뤄볼 것 입니다.  |chapter 8|
+    |WAL buffer|각 session 에서 수행되는 트랜잭션에 대한 변경 로그를 캐싱하는 공간으로 recovery 작업 수행 시 Data를 재구성 할 수 있도록 하는 영역입니다. 역시 postgresql.conf 의 WAL buffers 파라미터로 그 크기를 설정할 수 있습니다. WAL buffer를 이용하는 내부동작도 추후 chapter 9에서 더 자세히 다뤄볼 것 입니다.  |chapter 9|
+    |Commit log Buffer|각 트랜잭션의 상태(in_progress, committed, aborted) 정보를 캐싱하는 공간으로 모든 트랜잭션의 상태가 있으며 완료 여부를 확인할 수 있도록 하는 영역입니다. 따로 사이즈를 설정할 수 있는  Parameter 는 없으며 데이터베이스 엔진에 의해 자동관리됩니다. Commit log 를 이용한 PostgreSQL 의 Concurrency Control 은 추후 chapter 5.4 에서 더 자세히 다뤄보도록 하겠습니다. |chapter 5.4|
+   
+  
+  </details>
