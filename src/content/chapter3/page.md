@@ -156,15 +156,93 @@ Parser tree는 평문 SQL의 요소를 논리적으로 구분하여 저장한 �
 testdb=# SELECT id, data FROM tbl_a WHERE id < 300 ORDER BY data;
 ```
 이때 SelectStmt는 아래와 같이 생성됩니다.
-
-<img
-  src="https://www.interdb.jp/pg/img/fig-3-02.png"
-  alt="Parse tree example"
-  style="display: inline-block; margin: 0 auto; width: 1024px"
-/>
+<figure>
+  <img
+    src="https://www.interdb.jp/pg/img/fig-3-02.png"
+    alt="Parse tree example"
+    style="display: inline-block; margin: 0 auto; width: 1024px"
+  />
+  <figcaption>Fig 3.1 - Parser tree example</figcaption>
+</figure>
 
 Select list에 있는 id, data column들이 targetList에 담기게 됩니다. fromClause에는 tbl_a table이 담기고, whereClause에는 id < 300 조건문이 expression tree로 담기게 됩니다. 마지막으로 query의 ORDER BY 문이 sortClause에 담기는 것을 확인할 수 있습니다.
 
+### 3.1.2 Analyzer
+Parser가 SQL statement의 syntax check를 했다면 analyzer는 semantic check를 담당합니다. Semantic check란 SQL statement에 포함된 table, functions, 또는 연산자들을 system catalogs를 이용해 유효성 여부를 검사하는 것을 뜻합니다. Parser 단계에서는 system catalog lookup이 발생하지 않지만 analyzer 단계에서는 유효성 검사를 위한 lookup이 발생하게 됩니다.
+
+Semantic check를 진행하면서 만들어지는 결과물은 query tree라는 자료구조로 만들어집니다. Query tree의 root에는 Query라는 구조체가 위치해 있으며 해당 구조체에는 parser tree의 각 요소들에 대한 metadata를 저장할 수 있도록 구성되어 있습니다. Query는 Stmt 구조체들과 같이 <a href="https://github.com/postgres/postgres/blob/master/src/include/nodes/parsenodes.h">parsenodes.h</a>에 위치해 있습니다.  
+
+<details>
+  <summary>Query</summary>
+  
+  ```c
+  /*
+   * Query -
+   *	  Parse analysis turns all statements into a Query tree
+   *	  for further processing by the rewriter and planner.
+   *
+   *	  Utility statements (i.e. non-optimizable statements) have the
+   *	  utilityStmt field set, and the Query itself is mostly dummy.
+   *	  DECLARE CURSOR is a special case: it is represented like a SELECT,
+   *	  but the original DeclareCursorStmt is stored in utilityStmt.
+   *
+   *	  Planning converts a Query tree into a Plan tree headed by a PlannedStmt
+   *	  node --- the Query structure is not used by the executor.
+   */
+  typedef struct Query
+  {
+    NodeTag         type;
+    CmdType         commandType;        /* select|insert|update|delete|utility */
+    QuerySource     querySource;        /* where did I come from? */
+    uint32          queryId;            /* query identifier (can be set by plugins) */
+
+    bool            canSetTag;          /* do I set the command result tag? */
+    Node            *utilityStmt;       /* non-null if this is DECLARE CURSOR or a non-optimizable 
+                                         * statement */
+    int             resultRelation;     /* rtable index of target relation for 
+                                         * INSERT/UPDATE/DELETE; 0 for SELECT */
+    bool            hasAggs;            /* has aggregates in tlist or havingQual */
+    bool            hasWindowFuncs;     /* has window functions in tlist */
+    bool            hasSubLinks;        /* has subquery SubLink */
+    bool            hasDistinctOn;      /* distinctClause is from DISTINCT ON */
+    bool            hasRecursive;       /* WITH RECURSIVE was specified */
+    bool            hasModifyingCTE;    /* has INSERT/UPDATE/DELETE in WITH */
+    bool            hasForUpdate;       /* FOR [KEY] UPDATE/SHARE was specified */
+    bool            hasRowSecurity;     /* row security applied? */
+    List            *cteList;           /* WITH list (of CommonTableExpr's) */
+    List            *rtable;            /* list of range table entries */
+    FromExpr        *jointree;          /* table join tree (FROM and WHERE clauses) */
+    List            *targetList;        /* target list (of TargetEntry) */
+    List            *withCheckOptions;  /* a list of WithCheckOption's */
+    OnConflictExpr  *onConflict;        /* ON CONFLICT DO [NOTHING | UPDATE] */
+    List            *returningList;     /* return-values list (of TargetEntry) */
+    List            *groupClause;       /* a list of SortGroupClause's */
+    List            *groupingSets;      /* a list of GroupingSet's if present */
+    Node            *havingQual;        /* qualifications applied to groups */
+    List            *windowClause;      /* a list of WindowClause's */
+    List            *distinctClause;    /* a list of SortGroupClause's */
+    List            *sortClause;        /* a list of SortGroupClause's */
+    Node            *limitOffset;       /* # of result tuples to skip (int8 expr) */
+    Node            *limitCount;        /* # of result tuples to return (int8 expr) */
+    List            *rowMarks;          /* a list of RowMarkClause's */
+    Node            *setOperations;     /* set-operation tree if this is top level of a 
+                                         * UNION/INTERSECT/EXCEPT query */
+    List            *constraintDeps;    /* a list of pg_constraint OIDs that the query depends on 
+                                         * to be semantically valid */
+  } Query;
+  ```
+</details>
+<br/>
+
+Fig 3.1의 parser tree는 아래와 같은 query tree로 생성이 됩니다.
+<figure>
+  <img
+    src="https://www.interdb.jp/pg/img/fig-3-03.png"
+    alt="Query tree example"
+    style="display: inline-block; margin: 0 auto; width: 1024px"
+  />
+  <figcaption>Fig 3.2 - Query tree example</figcaption>
+</figure>
 
 ---
 ## 3.2. Cost-based Optimization :coin:
