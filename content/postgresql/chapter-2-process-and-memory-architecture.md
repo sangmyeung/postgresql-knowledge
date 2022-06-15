@@ -90,7 +90,7 @@ postgres&gt; pstree -p 9687
     style="display: inline-block; margin: 0 auto; width: 1024px"
   />
 </details>
-<이미지 TODO>
+이미지 TODO
 
    ## 2.2.1. Local Memory Area 
 
