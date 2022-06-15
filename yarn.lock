@@ -6682,6 +6682,27 @@ gatsby-core-utils@^3.15.0:
     tmp "^0.2.1"
     xdg-basedir "^4.0.0"
 
+gatsby-core-utils@^3.16.0:
+  version "3.16.0"
+  resolved "https://registry.yarnpkg.com/gatsby-core-utils/-/gatsby-core-utils-3.16.0.tgz#055e250614221b77168d0ca507a56a87d2cdbf35"
+  integrity sha512-cr3aIlzfzQkXSKng0dfAkg+v+Q0WOFJ1CCpM6HFvMykYtw5vSdaLxs6gwNmtPowG1wmCHkQ+pcyqppP+IdmVsg==
+  dependencies:
+    "@babel/runtime" "^7.15.4"
+    ci-info "2.0.0"
+    configstore "^5.0.1"
+    fastq "^1.13.0"
+    file-type "^16.5.3"
+    fs-extra "^10.1.0"
+    got "^11.8.3"
+    import-from "^4.0.0"
+    lmdb "2.3.10"
+    lock "^1.1.0"
+    node-object-hash "^2.3.10"
+    proper-lockfile "^4.1.2"
+    resolve-from "^5.0.0"
+    tmp "^0.2.1"
+    xdg-basedir "^4.0.0"
+
 gatsby-graphiql-explorer@^2.15.0:
   version "2.15.0"
   resolved "https://registry.yarnpkg.com/gatsby-graphiql-explorer/-/gatsby-graphiql-explorer-2.15.0.tgz#48cda38dba3aaf4c4e5f5884a43d16826d252d59"
@@ -6784,10 +6805,10 @@ gatsby-plugin-manifest@^4.0.0:
     semver "^7.3.7"
     sharp "^0.30.3"
 
-gatsby-plugin-mdx@^3.0.0:
-  version "3.15.1"
-  resolved "https://registry.yarnpkg.com/gatsby-plugin-mdx/-/gatsby-plugin-mdx-3.15.1.tgz#2656ebffe809e00ebb68a0c6fd86b36d9fa251f6"
-  integrity sha512-StCY3c3VJ3ba0djNjQKKUACgj1hW7dozEIiTXYvOVwNzD/jczhFiUdgv4Jxh2G1VTONhE89aDIl9LCDQl985nA==
+gatsby-plugin-mdx@3.16.1:
+  version "3.16.1"
+  resolved "https://registry.yarnpkg.com/gatsby-plugin-mdx/-/gatsby-plugin-mdx-3.16.1.tgz#f31a0a5df1a151826ae6f71ad6839830cd1fafce"
+  integrity sha512-6YX+z182gmRcUy+YK+mw8fFEzqakaCAFQI/AZU0V2lUoyhUiphETrqJAvoQh+pR0mOKI738ux9ENDCz5NAM0Bw==
   dependencies:
     "@babel/core" "^7.15.5"
     "@babel/generator" "^7.15.4"
@@ -6805,7 +6826,7 @@ gatsby-plugin-mdx@^3.0.0:
     escape-string-regexp "^1.0.5"
     eval "^0.1.4"
     fs-extra "^10.1.0"
-    gatsby-core-utils "^3.15.0"
+    gatsby-core-utils "^3.16.0"
     gray-matter "^4.0.2"
     json5 "^2.1.3"
     loader-utils "^1.4.0"
