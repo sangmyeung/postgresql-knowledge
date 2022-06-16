@@ -241,6 +241,177 @@ Fig 3.1의 parser tree는 아래와 같은 query tree로 생성이 됩니다.
   <figcaption style="text-align: center">Fig 3.2 - Query tree example</figcaption>
 </figure>
 
+### 3.1.3 Rewriter
+Analyzer에서 생성된 query tree는 Planner에게 전달되기 전에 Rewriter module을 거쳐가게 됩니다. Rewriter는 사용자가 <a href="https://www.postgresql.org/docs/current/rules.html">rule system</a>에 저장한 규칙을 사용하여 전달받은 query tree를 변형시키는 일을 담당합니다. Rule system에 대한 이야기는 이번 장에 하기에는 내용이 너무 길어지므로 다음 기회에 자세히 다루도록 하겠습니다. 
+
+Rewriter의 역할을 이해하기 좋은 예제로는 view가 있습니다. PostgreSQL은 view를 rule system을 사용하여 구현했습니다. CREATE VIEW command를 사용하여 view를 정의하면 해당 view에 대한 query tree를 pg_rewrite system catalog에 저장합니다. 그 후 생성한 view를 조회하는 query가 들어왔을 경우 Rewriter는 pg_rewrite를 조회하여 해당 view에 대한 rule을 가져와 query tree를 수정하여 Planner에게 전달하게 됩니다.
+
+아래 예제를 통해 생성한 view가 pg_rewrite에 어떻게 저장되는지 확인해봅시다.
+
+```sql
+postgres=# create table hypersql (c1 int);
+CREATE TABLE
+postgres=# create view hypersql_view as select * from hypersql where c1 > 100;
+CREATE VIEW
+postgres=# select a.ev_action from pg_rewrite a, pg_class b where a.ev_class = b.oid and b.relname = 'hypersql_view';
+```
+
+<details>
+  <summary>조회결과</summary>
+
+  ```sql
+  ({QUERY :commandType 1 
+          :querySource 0 
+          :canSetTag true 
+          :utilityStmt <> 
+          :resultRelation 0 
+          :hasAggs false 
+          :hasWindowFuncs false 
+          :hasTargetSRFs false 
+          :hasSubLinks false 
+          :hasDistinctOn false 
+          :hasRecursive false 
+          :hasModifyingCTE false 
+          :hasForUpdate false 
+          :hasRowSecurity false 
+          :isReturn false 
+          :cteList <> 
+          :rtable ({RTE :alias {ALIAS :aliasname old :colnames <>} 
+                        :eref {ALIAS :aliasname old :colnames ("c1")} 
+                        :rtekind 0 
+                        :relid 16470 
+                        :relkind v 
+                        :rellockmode 1 
+                        :tablesample <> 
+                        :lateral false 
+                        :inh false 
+                        :inFromCl false 
+                        :requiredPerms 0 
+                        :checkAsUser 0 
+                        :selectedCols (b) 
+                        :insertedCols (b) 
+                        :updatedCols (b) 
+                        :extraUpdatedCols (b) 
+                        :securityQuals <>
+                    } 
+                    {RTE :alias {ALIAS :aliasname new :colnames <>} 
+                        :eref {ALIAS :aliasname new :colnames ("c1")} 
+                        :rtekind 0 
+                        :relid 16470 
+                        :relkind v 
+                        :rellockmode 1 
+                        :tablesample <> 
+                        :lateral false 
+                        :inh false 
+                        :inFromCl false 
+                        :requiredPerms 0 
+                        :checkAsUser 0 
+                        :selectedCols (b) 
+                        :insertedCols (b) 
+                        :updatedCols (b) 
+                        :extraUpdatedCols (b) 
+                        :securityQuals <>
+                    }
+                    {RTE :alias <> 
+                        :eref {ALIAS :aliasname hypersql :colnames ("c1")} 
+                        :rtekind 0 
+                        :relid 16467 
+                        :relkind r 
+                        :rellockmode 1 
+                        :tablesample <> 
+                        :lateral false 
+                        :inh true 
+                        :inFromCl true 
+                        :requiredPerms 2 
+                        :checkAsUser 0 
+                        :selectedCols (b 8) 
+                        :insertedCols (b) 
+                        :updatedCols (b) 
+                        :extraUpdatedCols (b) 
+                        :securityQuals <>
+                    }) 
+          :jointree {FROMEXPR :fromlist ({RANGETBLREF :rtindex 3}) 
+                              :quals {OPEXPR :opno 521 
+                                            :opfuncid 147 
+                                            :opresulttype 16 
+                                            :opretset false 
+                                            :opcollid 0 
+                                            :inputcollid 0 
+                                            :args ({VAR :varno 3 
+                                                        :varattno 1 
+                                                        :vartype 23 
+                                                        :vartypmod -1 
+                                                        :varcollid 0 
+                                                        :varlevelsup 0 
+                                                        :varnosyn 3 
+                                                        :varattnosyn 1 
+                                                        :location 58
+                                                    } 
+                                                    {CONST :consttype 23 
+                                                          :consttypmod -1 
+                                                          :constcollid 0 
+                                                          :constlen 4 
+                                                          :constbyval true 
+                                                          :constisnull false 
+                                                          :location 63 
+                                                          :constvalue 4 [ 100 0 0 0 0 0 0 0 ]
+                                                    }) 
+                                              :location 61
+                                      }
+                      } 
+          :targetList ({TARGETENTRY :expr {VAR :varno 3 
+                                              :varattno 1 
+                                              :vartype 23 
+                                              :vartypmod -1 
+                                              :varcollid 0 
+                                              :varlevelsup 0 
+                                              :varnosyn 3 
+                                              :varattnosyn 1 
+                                              :location 36
+                                          } 
+                                    :resno 1 
+                                    :resname c1 
+                                    :ressortgroupref 0 
+                                    :resorigtbl 16467 
+                                    :resorigcol 1 
+                                    :resjunk false
+                        }) 
+          :override 0 
+          :onConflict <> 
+          :returningList <> 
+          :groupClause <> 
+          :groupDistinct false 
+          :groupingSets <> 
+          :havingQual <> 
+          :windowClause <> 
+          :distinctClause <> 
+          :sortClause <> 
+          :limitOffset <> 
+          :limitCount <> 
+          :limitOption 0 
+          :rowMarks <> 
+          :setOperations <> 
+          :constraintDeps <> 
+          :withCheckOptions <> 
+          :stmt_location 0 
+          :stmt_len 66
+  })
+  ```
+</details>
+
+위처럼 저장된 query tree는 아래 그림처럼 view에 대한 조회가 발생했을 때 view의 alias 대신 append가 되는 방식으로 동작하게 됩니다.
+
+<figure>
+  <img
+    src="https://www.interdb.jp/pg/img/fig-3-04.png"
+    alt="Rewriter example"
+    style="display: inline-block; margin: 0 auto; width: 1024px"
+  />
+  <figcaption style="text-align: center">Fig 3.3 - Rewriter example</figcaption>
+</figure>
+
+### 3.1.4 Planner and Executor
+
 ## 3.2. Cost-based Optimization 🪙
 
 ## 3.3. Plan Tree Generation 🌲
