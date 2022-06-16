@@ -3,6 +3,12 @@
 ---
 ## 3.0. TL;DR 🤷 
 3장 내용 요약!
+- PostgreSQL의 backend process는 5개의 component로 나뉘어져 query를 처리한다.
+  - Parser: SQL문의 syntax 검증 및 parser tree 생성 역할
+  - Analyzer: SQL문의 semantic 검증 및 query tree 생성 역할
+  - Rewriter: User-defined rule을 조회하여 query tree 재생성 역할
+  - Planner: Cost-based optimization을 통해 실행 계획 생성 역할
+  - Executor: 실행 계획에 따라 operation algorithm 실행 역할
 
 ## 3.1. Overview 🗺️
 PostgreSQL은 parallel query를 제외한 모든 query를 backend process에서 처리합니다. Backend process는 아래 component로 나눠집니다.
@@ -240,6 +246,182 @@ Fig 3.1의 parser tree는 아래와 같은 query tree로 생성이 됩니다.
   />
   <figcaption style="text-align: center">Fig 3.2 - Query tree example</figcaption>
 </figure>
+
+### 3.1.3 Rewriter
+Analyzer에서 생성된 query tree는 Planner에게 전달되기 전에 Rewriter module을 거쳐가게 됩니다. Rewriter는 사용자가 <a href="https://www.postgresql.org/docs/current/rules.html">rule system</a>에 저장한 규칙을 사용하여 전달받은 query tree를 변형시키는 일을 담당합니다. Rule system에 대한 이야기는 이번 장에 하기에는 내용이 너무 길어지므로 다음 기회에 자세히 다루도록 하겠습니다. 
+
+Rewriter의 역할을 이해하기 좋은 예제로는 view가 있습니다. PostgreSQL은 view를 rule system을 사용하여 구현했습니다. CREATE VIEW command를 사용하여 view를 정의하면 해당 view에 대한 query tree를 pg_rewrite system catalog에 저장합니다. 그 후 생성한 view를 조회하는 query가 들어왔을 경우 Rewriter는 pg_rewrite를 조회하여 해당 view에 대한 rule을 가져와 query tree를 수정하여 Planner에게 전달하게 됩니다.
+
+아래 예제를 통해 생성한 view가 pg_rewrite에 어떻게 저장되는지 확인해봅시다.
+
+```sql
+postgres=# create table hypersql (c1 int);
+CREATE TABLE
+postgres=# create view hypersql_view as select * from hypersql where c1 > 100;
+CREATE VIEW
+postgres=# select a.ev_action from pg_rewrite a, pg_class b where a.ev_class = b.oid and b.relname = 'hypersql_view';
+```
+
+<details>
+  <summary>조회결과</summary>
+
+  ```sql
+  ({QUERY :commandType 1 
+          :querySource 0 
+          :canSetTag true 
+          :utilityStmt <> 
+          :resultRelation 0 
+          :hasAggs false 
+          :hasWindowFuncs false 
+          :hasTargetSRFs false 
+          :hasSubLinks false 
+          :hasDistinctOn false 
+          :hasRecursive false 
+          :hasModifyingCTE false 
+          :hasForUpdate false 
+          :hasRowSecurity false 
+          :isReturn false 
+          :cteList <> 
+          :rtable ({RTE :alias {ALIAS :aliasname old :colnames <>} 
+                        :eref {ALIAS :aliasname old :colnames ("c1")} 
+                        :rtekind 0 
+                        :relid 16470 
+                        :relkind v 
+                        :rellockmode 1 
+                        :tablesample <> 
+                        :lateral false 
+                        :inh false 
+                        :inFromCl false 
+                        :requiredPerms 0 
+                        :checkAsUser 0 
+                        :selectedCols (b) 
+                        :insertedCols (b) 
+                        :updatedCols (b) 
+                        :extraUpdatedCols (b) 
+                        :securityQuals <>
+                    } 
+                    {RTE :alias {ALIAS :aliasname new :colnames <>} 
+                        :eref {ALIAS :aliasname new :colnames ("c1")} 
+                        :rtekind 0 
+                        :relid 16470 
+                        :relkind v 
+                        :rellockmode 1 
+                        :tablesample <> 
+                        :lateral false 
+                        :inh false 
+                        :inFromCl false 
+                        :requiredPerms 0 
+                        :checkAsUser 0 
+                        :selectedCols (b) 
+                        :insertedCols (b) 
+                        :updatedCols (b) 
+                        :extraUpdatedCols (b) 
+                        :securityQuals <>
+                    }
+                    {RTE :alias <> 
+                        :eref {ALIAS :aliasname hypersql :colnames ("c1")} 
+                        :rtekind 0 
+                        :relid 16467 
+                        :relkind r 
+                        :rellockmode 1 
+                        :tablesample <> 
+                        :lateral false 
+                        :inh true 
+                        :inFromCl true 
+                        :requiredPerms 2 
+                        :checkAsUser 0 
+                        :selectedCols (b 8) 
+                        :insertedCols (b) 
+                        :updatedCols (b) 
+                        :extraUpdatedCols (b) 
+                        :securityQuals <>
+                    }) 
+          :jointree {FROMEXPR :fromlist ({RANGETBLREF :rtindex 3}) 
+                              :quals {OPEXPR :opno 521 
+                                            :opfuncid 147 
+                                            :opresulttype 16 
+                                            :opretset false 
+                                            :opcollid 0 
+                                            :inputcollid 0 
+                                            :args ({VAR :varno 3 
+                                                        :varattno 1 
+                                                        :vartype 23 
+                                                        :vartypmod -1 
+                                                        :varcollid 0 
+                                                        :varlevelsup 0 
+                                                        :varnosyn 3 
+                                                        :varattnosyn 1 
+                                                        :location 58
+                                                    } 
+                                                    {CONST :consttype 23 
+                                                          :consttypmod -1 
+                                                          :constcollid 0 
+                                                          :constlen 4 
+                                                          :constbyval true 
+                                                          :constisnull false 
+                                                          :location 63 
+                                                          :constvalue 4 [ 100 0 0 0 0 0 0 0 ]
+                                                    }) 
+                                              :location 61
+                                      }
+                      } 
+          :targetList ({TARGETENTRY :expr {VAR :varno 3 
+                                              :varattno 1 
+                                              :vartype 23 
+                                              :vartypmod -1 
+                                              :varcollid 0 
+                                              :varlevelsup 0 
+                                              :varnosyn 3 
+                                              :varattnosyn 1 
+                                              :location 36
+                                          } 
+                                    :resno 1 
+                                    :resname c1 
+                                    :ressortgroupref 0 
+                                    :resorigtbl 16467 
+                                    :resorigcol 1 
+                                    :resjunk false
+                        }) 
+          :override 0 
+          :onConflict <> 
+          :returningList <> 
+          :groupClause <> 
+          :groupDistinct false 
+          :groupingSets <> 
+          :havingQual <> 
+          :windowClause <> 
+          :distinctClause <> 
+          :sortClause <> 
+          :limitOffset <> 
+          :limitCount <> 
+          :limitOption 0 
+          :rowMarks <> 
+          :setOperations <> 
+          :constraintDeps <> 
+          :withCheckOptions <> 
+          :stmt_location 0 
+          :stmt_len 66
+  })
+  ```
+</details>
+
+위처럼 저장된 query tree는 아래 그림처럼 view에 대한 조회가 발생했을 때 view의 alias 대신 append가 되는 방식으로 동작하게 됩니다.
+
+<figure>
+  <img
+    src="https://www.interdb.jp/pg/img/fig-3-04.png"
+    alt="Rewriter example"
+    style="display: inline-block; margin: 0 auto; width: 1024px"
+  />
+  <figcaption style="text-align: center">Fig 3.3 - Rewriter example</figcaption>
+</figure>
+
+### 3.1.4 Planner and Executor
+Rewriter의 손을 거친 query tree는 최종적으로 Planner에게 전달됩니다. Planner에 도달하기까지 지나온 module의 역할은 SQL statement가 요구하는 data에 대한 명세서를 만드는 것이라면, Planner의 역할은 이 명세서에서 요구하는 data를 가공하기 위한 실행 계획 즉, plan tree를 만드는 것입니다. 
+
+SQL statement가 요구하는 결과물을 생성하는 것은 다양한 조합의 계획을 통해 수행될 수 있습니다. 이 때 Planner는 가능한 실행 계획들 중에 제일 효율적인 계획을 선택해야 하는데, PostgreSQL에서는 그것을 cost-based optimization을 통해 달성합니다. PostgreSQL은 rule-based optimization나 optimizer hint를 지원하지 않고 순수히 CBO를 통해서만 plan tree를 생성하는데, 만약 Oracle을 사용할 때처럼 hint를 사용하고 싶다면 <a href="http://pghintplan.osdn.jp/pg_hint_plan.html">pg_hint</a> extension을 사용해야 합니다. Planner의 CBO와 plan tree generation 기법은 아래 section에서 좀 더 자세히 다루도록 하겠습니다.
+
+Planner가 plan tree를 생성하면 Executor는 plan tree에 저장된 실행 계획에 따라 data 가공에 필요한 algorithm을 실행 시키게 됩니다. Plan tree는 plan node 라고 하는 encapsulation unit으로 이루어져 있는데, Executor는 plan tree의 leaf node부터 root node까지 아래에서 위 순서로 plan node에 대응되는 algorithm을 실행 시켜 사용자가 요구한 data를 가공하게 됩니다. Executor의 algorithm은 전부 소개할 수는 없지만 join에 사용되는 algorithm을 아래 section에서 좀 더 자세히 다루도록 하겠습니다.
 
 ## 3.2. Cost-based Optimization 🪙
 
