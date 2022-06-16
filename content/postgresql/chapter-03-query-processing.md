@@ -3,6 +3,12 @@
 ---
 ## 3.0. TL;DR 🤷 
 3장 내용 요약!
+- PostgreSQL의 backend process는 5개의 component로 나뉘어져 query를 처리한다.
+  - Parser: SQL문의 syntax 검증 및 parser tree 생성 역할
+  - Analyzer: SQL문의 semantic 검증 및 query tree 생성 역할
+  - Rewriter: User-defined rule을 조회하여 query tree 재생성 역할
+  - Planner: Cost-based optimization을 통해 실행 계획 생성 역할
+  - Executor: 실행 계획에 따라 operation algorithm 실행 역할
 
 ## 3.1. Overview 🗺️
 PostgreSQL은 parallel query를 제외한 모든 query를 backend process에서 처리합니다. Backend process는 아래 component로 나눠집니다.
@@ -411,6 +417,11 @@ postgres=# select a.ev_action from pg_rewrite a, pg_class b where a.ev_class = b
 </figure>
 
 ### 3.1.4 Planner and Executor
+Rewriter의 손을 거친 query tree는 최종적으로 Planner에게 전달됩니다. Planner에 도달하기까지 지나온 module의 역할은 SQL statement가 요구하는 data에 대한 명세서를 만드는 것이라면, Planner의 역할은 이 명세서에서 요구하는 data를 가공하기 위한 실행 계획 즉, plan tree를 만드는 것입니다. 
+
+SQL statement가 요구하는 결과물을 생성하는 것은 다양한 조합의 계획을 통해 수행될 수 있습니다. 이 때 Planner는 가능한 실행 계획들 중에 제일 효율적인 계획을 선택해야 하는데, PostgreSQL에서는 그것을 cost-based optimization을 통해 달성합니다. PostgreSQL은 rule-based optimization나 optimizer hint를 지원하지 않고 순수히 CBO를 통해서만 plan tree를 생성하는데, 만약 Oracle을 사용할 때처럼 hint를 사용하고 싶다면 <a href="http://pghintplan.osdn.jp/pg_hint_plan.html">pg_hint</a> extension을 사용해야 합니다. Planner의 CBO와 plan tree generation 기법은 아래 section에서 좀 더 자세히 다루도록 하겠습니다.
+
+Planner가 plan tree를 생성하면 Executor는 plan tree에 저장된 실행 계획에 따라 data 가공에 필요한 algorithm을 실행 시키게 됩니다. Plan tree는 plan node 라고 하는 encapsulation unit으로 이루어져 있는데, Executor는 plan tree의 leaf node부터 root node까지 아래에서 위 순서로 plan node에 대응되는 algorithm을 실행 시켜 사용자가 요구한 data를 가공하게 됩니다. Executor의 algorithm은 전부 소개할 수는 없지만 join에 사용되는 algorithm을 아래 section에서 좀 더 자세히 다루도록 하겠습니다.
 
 ## 3.2. Cost-based Optimization 🪙
 
