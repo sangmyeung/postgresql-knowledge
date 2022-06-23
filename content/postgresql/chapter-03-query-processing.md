@@ -424,7 +424,245 @@ SQL statement가 요구하는 결과물을 생성하는 것은 다양한 조합�
 Planner가 plan tree를 생성하면 Executor는 plan tree에 저장된 실행 계획에 따라 data 가공에 필요한 algorithm을 실행 시키게 됩니다. Plan tree는 plan node 라고 하는 encapsulation unit으로 이루어져 있는데, Executor는 plan tree의 leaf node부터 root node까지 아래에서 위 순서로 plan node에 대응되는 algorithm을 실행 시켜 사용자가 요구한 data를 가공하게 됩니다. Executor의 algorithm은 전부 소개할 수는 없지만 join에 사용되는 algorithm을 아래 section에서 좀 더 자세히 다루도록 하겠습니다.
 
 ## 3.2. Cost-based Optimization 🪙
+앞서 말씀드린 바와 같이 PostgreSQL의 query optimization은 cost-based로 수행됩니다. 여기서 cost란 query processing에 필요한 여러 resource를 숫자로 표현한 것을 말하는데, 그렇기 때문에 cost는 절대적 성능 지표라고 하기 보다는 비교를 쉽게 하기 위한 상대적 성능 지표로 볼 수 있습니다. 
 
+Cost는 각 executor operation 별로 정의된 함수에 의해 계산되고, 각 operation이 필요로 하는 resource와 tuple 개수 또는 page 개수와 같은 상황 별 지표를 토대로 값이 정해집니다. 각 operation 별 cost 함수는 <a href="https://github.com/postgres/postgres/blob/master/src/backend/optimizer/path/costsize.c">costsize.c</a>에 정의되어 있습니다. 예를 들어 sequential scan과 index scan의 cost는 각각 cost_seqscan(), cost_index() 함수를 사용하여 계산합니다.
+
+계산된 cost는 EXPLAIN command를 사용하여 출력해볼 수 있습니다. Cost는 start-up cost와 run cost 두 단계로 표현되고 정의는 아래와 같습니다.
+- start-up cost: 한 tuple을 fetch 해오기까지 소요되는 cost. 예를 들어 index scan의 start-up cost는 index leaf block에 있는 tuple에 도달하기 까지 읽어야 하는 index block read cost입니다.
+- run cost: 모든 tuple을 fetch 해오기까지 소요되는 cost.
+Query에 대해 EXPLAIN을 출력해보면 start-up cost와 run cost를 확인해볼 수 있습니다. 간단한 예제를 통해 확인해보겠습니다.
+
+```sql
+1 postgres=# create table test (c1 int, c2 int);
+2 CREATE TABLE
+3 postgres=# insert into test select generate_series(1,10000), generate_series(1,10000);
+4 INSERT 0 10000
+5 postgres=# EXPLAIN SELECT * FROM test;
+6                         QUERY PLAN                        
+7 ----------------------------------------------------------
+8  Seq Scan on test  (cost=0.00..145.00 rows=10000 width=8)
+9 (1 row)
+```
+
+위 예제를 보면 8번 줄에 cost가 적혀있는 것을 볼 수 있습니다. 첫 번째 값이 start-up cost이고 두 번째 값은 start-up cost와 run cost를 합친 total cost입니다. 
+
+아래 subsection에서는 4개의 operation을 뽑아 각 operation의 cost estimation이 어떻게 계산되는지 살펴보겠습니다. 예제로 사용할 table은 아래 정의된 _hypersql_ table로 통일하겠습니다.
+
+```sql
+postgres=# create table hypersql (id int primary key, data int);
+CREATE TABLE
+postgres=# create index hypersql_idx on hypersql(data);
+CREATE INDEX
+postgres=# insert into hypersql select generate_series(1,10000), generate_series(1,10000);
+INSERT 0 10000
+postgres=# \d hypersql
+              Table "public.hypersql"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ id     | integer |           | not null | 
+ data   | integer |           |          | 
+Indexes:
+    "hypersql_pkey" PRIMARY KEY, btree (id)
+    "hypersql_idx" btree (data)
+```
+
+### 3.2.1. Sequential Scan Cost Estimation
+첫번째로 cost_seqscan() 함수로 계산되는 sequential scan의 cost estimation에 대해 알아보겠습니다. Sequential scan의 start-up cost는 항상 0으로 계산되고 run cost는 아래의 수식으로 정의됩니다.
+
+$$
+\begin{align}
+run\_cost_{without\ filter} &= cpu\_tuple\_cost \times N_{tuple} + seq\_page\_cost \times N_{page}
+\newline
+run\_cost_{with\ filter} &= (cpu\_tuple\_cost + cpu\_operator\_cost) \times N_{tuple} + seq\_page\_cost \times N_{page}
+\end{align}
+$$
+
+위 식 중 (1)은 filter가 없는 경우, (2)는 filter가 있는 경우에 대한 cost 공식입니다. 위 식에 포함된 _cpu\_tuple\_cost_, _cpu\_operator\_cost_, _seq\_page\_cost_ 는 postgresql.conf file에 설정할 수 있는 파라미터 값이며 default 값은 각각 0.01, 0.0025, 1 입니다. $N_{tuple}$과 $N_{page}$는 각각 table에 있는 tuple 개수와 page 개수를 뜻하며 아래와 같이 query를 통해 값을 구할 수 있습니다.
+
+```sql
+postgres=# select relpages, reltuples from pg_class where relname = 'hypersql';
+ relpages | reltuples 
+----------+-----------
+       45 |     10000
+(1 row)
+```
+
+따라서 _hypersql_ table에 대한 sequential scan의 run cost는 각각
+
+$$
+\begin{aligned}
+run\_cost_{without\ filter} &= 0.01 \times 10000 + 1 \times 45 = 145.00 
+\newline
+run\_cost_{with\ filter} &= (0.0025 + 0.01) \times 10000 + 1 \times 45 = 170.00 
+\end{aligned}
+$$
+
+임을 구할 수 있습니다. 해당 값이 맞는지 EXPLAIN command를 사용하여 확인해보겠습니다.
+
+```sql
+/* Sequential scan without filter */
+postgres=# explain select * from hypersql;
+                          QUERY PLAN                          
+--------------------------------------------------------------
+ Seq Scan on hypersql  (cost=0.00..145.00 rows=10000 width=8)
+(1 row)
+
+
+/* Sequential scan with filter */
+postgres=# explain select * from hypersql where id <= 8000;
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Seq Scan on hypersql  (cost=0.00..170.00 rows=8000 width=8)
+   Filter: (id <= 8000)
+(2 rows)
+```
+독자는 primary key인 _hypersql.id_ column에 대한 filter 절이 포함된 SQL문이 sequential scan으로 수행된 것에 의아할 수 있습니다. 아래 subsection에서 index scan의 cost estimation이 어떻게 계산되는지 확인해보고 위 플랜이 적절했는지 확인해보겠습니다. 
+
+### 3.2.2. Index Scan Cost Estimation
+PostgreSQL이 지원하는 index의 종류가 다양하지만 index scan에 대한 cost는 cost_index()라는 공통함수를 통해 계산됩니다. Index scan에 대한 cost를 계산하기 전에 index page와 index tuple의 개수를 각각 $N_{index\ page}$, $N_{index\ tuple}$ 로 표현하고 아래와 같이 확인해볼 수 있다는 점을 말씀드립니다.
+```sql
+postgres=# select relpages, reltuples from pg_class where relname = 'hypersql_idx';
+ relpages | reltuples 
+----------+-----------
+       30 |     10000
+(1 row)
+```
+$$
+\begin{aligned}
+N_{index\ page} &= 10000,
+\newline
+N_{index\ tuple} &= 30
+\end{aligned}
+$$
+
+#### Start-up Cost
+Sequential scan과 다르게 index scan의 경우에는 index를 traverse 하는데 발생하는 start-up cost가 있습니다. Start-up cost의 공식은 아래와 같습니다.
+
+$$
+start\_up\_cost = \{ceil(log_2(N_{index\ tuple})) + (H_{index} + 1) \times 50\} \times cpu\_operator\_cost
+$$
+
+위 공식에서 $H_{index}$ 는 index tree의 높이를 뜻합니다.
+
+#### Run Cost
+Run cost는 start-up cost에 비해 조금 더 복잡합니다. 우선 크게 봤을 때 아래 공식으로 계산할 수 있습니다.
+
+$$
+\begin{align}
+run\_cost &= (index\_cpu\_cost + table\_cpu\_cost) \\
+          &+ (index\_io\_cost + table\_io\_cost)
+\end{align}
+$$
+
+우선 (3)에서 등장하는 _index\_cpu\_cost_ 와 _table\_cpu\_cost_ 의 정의 먼저 정리해보겠습니다.
+
+$$
+\begin{aligned}
+index\_cpu\_cost &= Selectivity \times N_{index\ tuple} \times (cpu\_index\_tuple\_cost + qual\_op\_cost),
+\newline
+table\_cpu\_cost &= Selectivity \times N_{tuple} \times (cpu\_tuple\_cost + qpqual\_cost)
+\end{aligned}
+$$
+
+일단 _Selectivity_ 가 눈에 띕니다. Selectivity는 index의 전체 범위 중 filter 절로 인해 선택될 범위의 비율의 예측값이며 미리 수집된 통계정보를 통해 값을 예측하게 됩니다. Selectivity는 0과 1 사이의 floating point number로 계산됩니다. 더 자세한 내용을 다루기에는 해당 section이 너무 길어질 것 같아 다음 기회에 다루도록 하겠습니다. 
+
+ _cpu\_index\_tuple\_cost_ 는 postgresql.conf file에서 설정할 수 있는 parameter이며 default 값은 0.005 입니다. _qual\_op\_cost_ 는 index key evaluation에 들어가는 비용이고 predicate에 따라 달라지는 값입니다. 마찬가지로 _qpqual\_cost_ 는 index key 외에 수행해야 하는 filter evaluation에 들어가는 비용이며 어떤 expression이냐에 따라 비용은 달라지게 됩니다.
+
+다음 (4)에서 등장하는 _index\_io\_cost_ 와 _table\_io\_cost_ 에 대해 설명해보겠습니다. 
+
+$$
+\begin{aligned}
+index\_io\_cost &= ceil(Selectivity \times N_{index\ page}) \times random\_page\_cost,
+\newline
+table\_io\_cost &= max\_io\_cost + indexCorrelation^2 \times (min\_io\_cost - max\_io\_cost)
+\end{aligned}
+$$
+
+우선 _random\_page\_cost_ 는 page에 대해 random access를 할 때 들어가는 cost를 뜻하며 default 값이 4인 postgresql.conf에 저장되는 parameter입니다. 즉, $$(Selectivity \times N_{index\ page})$$ 는 index scan 시 읽게 되는 index page의 수를 뜻하기 때문에, _index\_io\_cost_ 는 읽게 되는 index page의 random acesss 비용이라고 생각하면 될 것 같습니다. 
+
+다음 _table\_io\_cost_ 의 수식을 보면 _max\_io\_cost_ 와 _min\_io\_cost_ 라는 변수가 나오는데 각각의 변수는 최악과 최고의 I/O case에서 발생하는 비용을 뜻합니다. _max\_io\_cost_ 는 table의 모든 page를 random access로 읽어올 때의 비용이고 아래와 같이 정의할 수 있습니다.
+
+$$
+max\_io\_cost = N_{page} \times random_page_cost
+$$
+
+반면 _min\_io\_cost_ 는 읽게 되는 table page들을 모두 sequential 하게 읽어올 때의 비용이고 아래와 같이 정의할 수 있습니다.
+
+$$
+\begin{aligned}
+min\_io\_cost &= ``one\ random\ page\ read\ " + ``remainders\ with\ sequential\ read\ "
+\newline
+&= 1 \times random\_page\_cost + (ceil(Selectivity \times N_{page}) - 1) \times seq\_page\_cost
+\end{aligned}
+$$
+
+마지막으로 정의해야 할 변수인 IndexCorrelation은 index tuple과 그것이 가리키는 table tuple의 저장 위치 순서를 통계적 의미에서의 상관관계를 표현하는 값입니다. 아래 예제를 통해 어떤 의미인지 살펴보겠습니다. 아래와 같이 _tbl\_corr_ 라는 table과 각 column을 key로 갖는 index를 생성해보겠습니다.
+
+```sql
+postgres=# create table tbl_corr (col_asc int, col_desc int, col_rand int);
+CREATE TABLE
+postgres=# create index tbl_corr_asc on tbl_corr(col_asc);
+CREATE INDEX
+postgres=# create index tbl_corr_desc on tbl_corr(col_desc);
+CREATE INDEX
+postgres=# create index tbl_corr_rand on tbl_corr(col_rand);
+CREATE INDEX
+postgres=# insert into tbl_corr select generate_series(1,1000), -generate_series(1,1000), trunc(random() * 1000;
+INSERT 0 1000
+postgres=# analyze;
+ANALYZE
+```
+
+즉 _col\_asc_ column은 1과 1000 사이의 정수 데이터를 오름차순으로, _col\_desc_ column은 -1과 -1000 사이의 정수 데이터를 내림차순으로, _col\_rand_ column은 1과 1000 사이의 정수 데이터를 임의의 순으로 넣었습니다. 이 때 _pg\_stats_ catalog를 통해서 correlation을 조회해보면 아래와 같은 값이 출력됨을 확인할 수 있습니다. 
+
+```sql
+postgres=# select attname, correlation from pg_stats where tablename='tbl_corr';
+ attname  | correlation  
+----------+--------------
+ col_asc  |            1
+ col_rand | 0.0022713623
+ col_desc |           -1
+(3 rows)
+```
+
+위 결과를 해석하자면 correlation 값은 table tuple과 index tuple의 순서가 동일한 경우 1을, 순서가 역순인 경우 -1을, 그리고 순서가 무작위한 상관관계를 가질 경우 0을 갖는 것을 알 수 있습니다. 
+
+다시 _table\_io\_cost_ 의 수식으로 돌아와서 설명하면 indexCorrelation을 제곱한 값은 index tuple과 table tuple 사이에 상관관계가 있을 수록 1에 가까운 수를, 상관관계가 없을 수록 0에 가까운 수를 갖게 되고, 따라서 _table\_io\_cost_ 는 index tuple과 table tuple의 상관관계가 많을 수록 _min\_io\_cost_ 의 값에 가까운 값을, 상관관계가 적을 수록 _max\_io\_cost_ 의 값에 가까운 값을, 그리고 중간 범위의 경우 상관관계 만큼 _max\_io\_cost_ 에서 _min\_io\_cost_ 와의 차이를 차감한다고 생각하면 될 것 같습니다.
+
+마지막으로 hypersql에 대한 scan을 했을 때의 index scan cost를 계산해보고 이 section을 마무리 하겠습니다. 아래 query를 위에서 실행해봤는데요.
+
+```sql
+postgres=# explain select * from hypersql where id <= 8000;
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Seq Scan on hypersql  (cost=0.00..170.00 rows=8000 width=8)
+   Filter: (id <= 8000)
+(2 rows)
+```
+위에서 정의한 index scan의 cost를 계산해보면 아래와 같이 계산됩니다.
+
+$$
+\begin{aligned}
+total\_cost &= startup\_cost + run\_cost 
+\newline
+&=  \{ceil(log_2(10000)) + (1 + 1) \times 50\} \times 0.025 
+\newline
+&+ 0.8 \times 10000 \times (0.005 + 0.0025)
+\newline
+&+ 0.8 \times 10000 \times (0.01 + 0)
+\newline
+&+ (ceil(0.8 \times 30) \times 4)
+\newline
+&+ 45 \times 4 + 1^2 \times ((4 + (ceil(0.8 \times 45 -1) \times 1)) - 45 \times 4)
+\newline
+&= 2.83 + 60.00 + 80.00 + 96.00 + 39.00
+\newline
+&= 277.83
+\end{aligned}
+$$
+
+따라서 sequential scan에 비해 위 query에 대한 index scan의 cost가 확실히 크기 때문에 sequential scan을 선택한 것이 맞았다는 것을 볼 수 있습니다.
 ## 3.3. Plan Tree Generation 🌲
 
 ## 3.4. Executor and Operation Algorithms ⚙️
