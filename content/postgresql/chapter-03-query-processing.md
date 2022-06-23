@@ -431,6 +431,7 @@ Cost는 각 executor operation 별로 정의된 함수에 의해 계산되고, �
 계산된 cost는 EXPLAIN command를 사용하여 출력해볼 수 있습니다. Cost는 start-up cost와 run cost 두 단계로 표현되고 정의는 아래와 같습니다.
 - start-up cost: 한 tuple을 fetch 해오기까지 소요되는 cost. 예를 들어 index scan의 start-up cost는 index leaf block에 있는 tuple에 도달하기 까지 읽어야 하는 index block read cost입니다.
 - run cost: 모든 tuple을 fetch 해오기까지 소요되는 cost.
+
 Query에 대해 EXPLAIN을 출력해보면 start-up cost와 run cost를 확인해볼 수 있습니다. 간단한 예제를 통해 확인해보겠습니다.
 
 ```sql
@@ -447,7 +448,7 @@ Query에 대해 EXPLAIN을 출력해보면 start-up cost와 run cost를 확인�
 
 위 예제를 보면 8번 줄에 cost가 적혀있는 것을 볼 수 있습니다. 첫 번째 값이 start-up cost이고 두 번째 값은 start-up cost와 run cost를 합친 total cost입니다. 
 
-아래 subsection에서는 4개의 operation을 뽑아 각 operation의 cost estimation이 어떻게 계산되는지 살펴보겠습니다. 예제로 사용할 table은 아래 정의된 _hypersql_ table로 통일하겠습니다.
+아래 subsection에서는 sequential scan과 index scan operation의 cost estimation이 어떻게 계산되는지 살펴보겠습니다. 예제로 사용할 table은 아래 정의된 _hypersql_ table로 통일하겠습니다.
 
 ```sql
 postgres=# create table hypersql (id int primary key, data int);

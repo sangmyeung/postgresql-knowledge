@@ -1,6 +1,6 @@
-# Chapter 2. Process and Memory Architecture 
 2장에서는 PostgreSQL prcoess 구조와 메모리 구조에 대해 알아볼 것 입니다. 2장의 내용을 잘 이해하면 이후 챕터에서 배우게 될 내용에 큰 도움이 될 것이니 잘 숙지하면 좋을 것 같습니다.  
 
+---
 ## 2.1. Process Architecture 
 
 PostgreSQL 은 client/server 모델을 사용하는 관계형 데이터베이스로 내부적으로 여러 프로세스가 단일 호스트에서 동작하고 있습니다. 일반적으로 하나의 데이터베이스 클러스터를 운영하는 여러 프로세스의 집합을 'PostgreSQL' 이라고 하며 이를 구성하는 프로세스들은 크게 다음과 같습니다. 
