@@ -23,6 +23,9 @@ Parser는 평문으로 되어 있는 SQL statement의 syntax check를 하고 par
 
 Parser tree는 평문 SQL의 요소를 논리적으로 구분하여 저장한 자료구조입니다. 다만 하나의 구조체로 표현되는 것은 아니고 statement의 형태 마다 대응되는 구조체가 있으며, 그것들의 집합을 parser tree라고 부릅니다. 예를 들어 <a href="https://github.com/postgres/postgres/blob/master/src/include/nodes/parsenodes.h">parsenodes.h</a> 에 정의된 *Stmt 구조체들이 parser tree라는 카테고리를 구성하는 요소라고 할 수 있습니다.  
 
+<details>
+<summary>Statement 구조체 보기</summary>
+
 ```c
 typedef struct InsertStmt
 {
@@ -116,6 +119,8 @@ typedef struct SelectStmt
   /* Eventually add fields for CORRESPONDING spec here */
 } SelectStmt;
 ```
+</details>
+
 <br/>
 
 간단한 예시를 통해 SelectStmt가 어떻게 구성되는지 확인해보겠습니다. 아래 예시와 같은 SQL이 주어졌다고 가정해봅시다.
@@ -138,6 +143,9 @@ Select list에 있는 id, data column들이 targetList에 담기게 됩니다. f
 Parser가 SQL statement의 syntax check를 했다면 analyzer는 semantic check를 담당합니다. Semantic check란 SQL statement에 포함된 table, functions, 또는 연산자들을 system catalogs를 이용해 유효성 여부를 검사하는 것을 뜻합니다. Parser 단계에서는 system catalog lookup이 발생하지 않지만 analyzer 단계에서는 유효성 검사를 위한 lookup이 발생하게 됩니다.
 
 Semantic check를 진행하면서 만들어지는 결과물은 query tree라는 자료구조로 만들어집니다. Query tree의 root에는 Query라는 구조체가 위치해 있으며 해당 구조체에는 parser tree의 각 요소들에 대한 metadata를 저장할 수 있도록 구성되어 있습니다. Query는 Stmt 구조체들과 같이 <a href="https://github.com/postgres/postgres/blob/master/src/include/nodes/parsenodes.h">parsenodes.h</a>에 위치해 있습니다.  
+
+<details>
+<summary>Query 구조체 보기</summary>
 
 ```c
 /*
@@ -235,6 +243,8 @@ typedef struct Query
 	int			stmt_len;		/* length in bytes; 0 means "rest of string" */
 } Query;
 ```
+</details>
+
 <br/>
 
 Fig 3.1의 parser tree는 아래와 같은 query tree로 생성이 됩니다.
@@ -263,147 +273,148 @@ postgres=# select a.ev_action from pg_rewrite a, pg_class b where a.ev_class = b
 ```
 
 <details>
-  <summary>조회결과</summary>
+<summary>조회결과 보기</summary>
 
-  ```sql
-  ({QUERY :commandType 1 
-          :querySource 0 
-          :canSetTag true 
-          :utilityStmt <> 
-          :resultRelation 0 
-          :hasAggs false 
-          :hasWindowFuncs false 
-          :hasTargetSRFs false 
-          :hasSubLinks false 
-          :hasDistinctOn false 
-          :hasRecursive false 
-          :hasModifyingCTE false 
-          :hasForUpdate false 
-          :hasRowSecurity false 
-          :isReturn false 
-          :cteList <> 
-          :rtable ({RTE :alias {ALIAS :aliasname old :colnames <>} 
-                        :eref {ALIAS :aliasname old :colnames ("c1")} 
-                        :rtekind 0 
-                        :relid 16470 
-                        :relkind v 
-                        :rellockmode 1 
-                        :tablesample <> 
-                        :lateral false 
-                        :inh false 
-                        :inFromCl false 
-                        :requiredPerms 0 
-                        :checkAsUser 0 
-                        :selectedCols (b) 
-                        :insertedCols (b) 
-                        :updatedCols (b) 
-                        :extraUpdatedCols (b) 
-                        :securityQuals <>
+```sql
+({QUERY :commandType 1 
+        :querySource 0 
+        :canSetTag true 
+        :utilityStmt <> 
+        :resultRelation 0 
+        :hasAggs false 
+        :hasWindowFuncs false 
+        :hasTargetSRFs false 
+        :hasSubLinks false 
+        :hasDistinctOn false 
+        :hasRecursive false 
+        :hasModifyingCTE false 
+        :hasForUpdate false 
+        :hasRowSecurity false 
+        :isReturn false 
+        :cteList <> 
+        :rtable ({RTE :alias {ALIAS :aliasname old :colnames <>} 
+                      :eref {ALIAS :aliasname old :colnames ("c1")} 
+                      :rtekind 0 
+                      :relid 16470 
+                      :relkind v 
+                      :rellockmode 1 
+                      :tablesample <> 
+                      :lateral false 
+                      :inh false 
+                      :inFromCl false 
+                      :requiredPerms 0 
+                      :checkAsUser 0 
+                      :selectedCols (b) 
+                      :insertedCols (b) 
+                      :updatedCols (b) 
+                      :extraUpdatedCols (b) 
+                      :securityQuals <>
+                  } 
+                  {RTE :alias {ALIAS :aliasname new :colnames <>} 
+                      :eref {ALIAS :aliasname new :colnames ("c1")} 
+                      :rtekind 0 
+                      :relid 16470 
+                      :relkind v 
+                      :rellockmode 1 
+                      :tablesample <> 
+                      :lateral false 
+                      :inh false 
+                      :inFromCl false 
+                      :requiredPerms 0 
+                      :checkAsUser 0 
+                      :selectedCols (b) 
+                      :insertedCols (b) 
+                      :updatedCols (b) 
+                      :extraUpdatedCols (b) 
+                      :securityQuals <>
+                  }
+                  {RTE :alias <> 
+                      :eref {ALIAS :aliasname hypersql :colnames ("c1")} 
+                      :rtekind 0 
+                      :relid 16467 
+                      :relkind r 
+                      :rellockmode 1 
+                      :tablesample <> 
+                      :lateral false 
+                      :inh true 
+                      :inFromCl true 
+                      :requiredPerms 2 
+                      :checkAsUser 0 
+                      :selectedCols (b 8) 
+                      :insertedCols (b) 
+                      :updatedCols (b) 
+                      :extraUpdatedCols (b) 
+                      :securityQuals <>
+                  }) 
+        :jointree {FROMEXPR :fromlist ({RANGETBLREF :rtindex 3}) 
+                            :quals {OPEXPR :opno 521 
+                                          :opfuncid 147 
+                                          :opresulttype 16 
+                                          :opretset false 
+                                          :opcollid 0 
+                                          :inputcollid 0 
+                                          :args ({VAR :varno 3 
+                                                      :varattno 1 
+                                                      :vartype 23 
+                                                      :vartypmod -1 
+                                                      :varcollid 0 
+                                                      :varlevelsup 0 
+                                                      :varnosyn 3 
+                                                      :varattnosyn 1 
+                                                      :location 58
+                                                  } 
+                                                  {CONST :consttype 23 
+                                                        :consttypmod -1 
+                                                        :constcollid 0 
+                                                        :constlen 4 
+                                                        :constbyval true 
+                                                        :constisnull false 
+                                                        :location 63 
+                                                        :constvalue 4 [ 100 0 0 0 0 0 0 0 ]
+                                                  }) 
+                                            :location 61
+                                    }
                     } 
-                    {RTE :alias {ALIAS :aliasname new :colnames <>} 
-                        :eref {ALIAS :aliasname new :colnames ("c1")} 
-                        :rtekind 0 
-                        :relid 16470 
-                        :relkind v 
-                        :rellockmode 1 
-                        :tablesample <> 
-                        :lateral false 
-                        :inh false 
-                        :inFromCl false 
-                        :requiredPerms 0 
-                        :checkAsUser 0 
-                        :selectedCols (b) 
-                        :insertedCols (b) 
-                        :updatedCols (b) 
-                        :extraUpdatedCols (b) 
-                        :securityQuals <>
-                    }
-                    {RTE :alias <> 
-                        :eref {ALIAS :aliasname hypersql :colnames ("c1")} 
-                        :rtekind 0 
-                        :relid 16467 
-                        :relkind r 
-                        :rellockmode 1 
-                        :tablesample <> 
-                        :lateral false 
-                        :inh true 
-                        :inFromCl true 
-                        :requiredPerms 2 
-                        :checkAsUser 0 
-                        :selectedCols (b 8) 
-                        :insertedCols (b) 
-                        :updatedCols (b) 
-                        :extraUpdatedCols (b) 
-                        :securityQuals <>
-                    }) 
-          :jointree {FROMEXPR :fromlist ({RANGETBLREF :rtindex 3}) 
-                              :quals {OPEXPR :opno 521 
-                                            :opfuncid 147 
-                                            :opresulttype 16 
-                                            :opretset false 
-                                            :opcollid 0 
-                                            :inputcollid 0 
-                                            :args ({VAR :varno 3 
-                                                        :varattno 1 
-                                                        :vartype 23 
-                                                        :vartypmod -1 
-                                                        :varcollid 0 
-                                                        :varlevelsup 0 
-                                                        :varnosyn 3 
-                                                        :varattnosyn 1 
-                                                        :location 58
-                                                    } 
-                                                    {CONST :consttype 23 
-                                                          :consttypmod -1 
-                                                          :constcollid 0 
-                                                          :constlen 4 
-                                                          :constbyval true 
-                                                          :constisnull false 
-                                                          :location 63 
-                                                          :constvalue 4 [ 100 0 0 0 0 0 0 0 ]
-                                                    }) 
-                                              :location 61
-                                      }
-                      } 
-          :targetList ({TARGETENTRY :expr {VAR :varno 3 
-                                              :varattno 1 
-                                              :vartype 23 
-                                              :vartypmod -1 
-                                              :varcollid 0 
-                                              :varlevelsup 0 
-                                              :varnosyn 3 
-                                              :varattnosyn 1 
-                                              :location 36
-                                          } 
-                                    :resno 1 
-                                    :resname c1 
-                                    :ressortgroupref 0 
-                                    :resorigtbl 16467 
-                                    :resorigcol 1 
-                                    :resjunk false
-                        }) 
-          :override 0 
-          :onConflict <> 
-          :returningList <> 
-          :groupClause <> 
-          :groupDistinct false 
-          :groupingSets <> 
-          :havingQual <> 
-          :windowClause <> 
-          :distinctClause <> 
-          :sortClause <> 
-          :limitOffset <> 
-          :limitCount <> 
-          :limitOption 0 
-          :rowMarks <> 
-          :setOperations <> 
-          :constraintDeps <> 
-          :withCheckOptions <> 
-          :stmt_location 0 
-          :stmt_len 66
-  })
-  ```
+        :targetList ({TARGETENTRY :expr {VAR :varno 3 
+                                            :varattno 1 
+                                            :vartype 23 
+                                            :vartypmod -1 
+                                            :varcollid 0 
+                                            :varlevelsup 0 
+                                            :varnosyn 3 
+                                            :varattnosyn 1 
+                                            :location 36
+                                        } 
+                                  :resno 1 
+                                  :resname c1 
+                                  :ressortgroupref 0 
+                                  :resorigtbl 16467 
+                                  :resorigcol 1 
+                                  :resjunk false
+                      }) 
+        :override 0 
+        :onConflict <> 
+        :returningList <> 
+        :groupClause <> 
+        :groupDistinct false 
+        :groupingSets <> 
+        :havingQual <> 
+        :windowClause <> 
+        :distinctClause <> 
+        :sortClause <> 
+        :limitOffset <> 
+        :limitCount <> 
+        :limitOption 0 
+        :rowMarks <> 
+        :setOperations <> 
+        :constraintDeps <> 
+        :withCheckOptions <> 
+        :stmt_location 0 
+        :stmt_len 66
+})
+```
 </details>
+<br/>
 
 위처럼 저장된 query tree는 아래 그림처럼 view에 대한 조회가 발생했을 때 view의 alias 대신 append가 되는 방식으로 동작하게 됩니다.
 
@@ -473,13 +484,13 @@ Indexes:
 
 $$
 \begin{align}
-run\_cost_{without\ filter} &= cpu\_tuple\_cost \times N_{tuple} + seq\_page\_cost \times N_{page}
+\text{run cost without filter} &= \text{cpu\_tuple\_cost} \times N_{\text{tuple}} + \text{seq\_page\_cost} \times N_{\text{page}}
 \newline
-run\_cost_{with\ filter} &= (cpu\_tuple\_cost + cpu\_operator\_cost) \times N_{tuple} + seq\_page\_cost \times N_{page}
+\text{run cost with filter} &= (\text{cpu\_tuple\_cost} + \text{cpu\_operator\_cost}) \times N_{\text{tuple}} + \text{seq\_page\_cost} \times N_{\text{page}}
 \end{align}
 $$
 
-위 식 중 (1)은 filter가 없는 경우, (2)는 filter가 있는 경우에 대한 cost 공식입니다. 위 식에 포함된 _cpu\_tuple\_cost_, _cpu\_operator\_cost_, _seq\_page\_cost_ 는 postgresql.conf file에 설정할 수 있는 파라미터 값이며 default 값은 각각 0.01, 0.0025, 1 입니다. $N_{tuple}$과 $N_{page}$는 각각 table에 있는 tuple 개수와 page 개수를 뜻하며 아래와 같이 query를 통해 값을 구할 수 있습니다.
+위 식 중 (1)은 filter가 없는 경우, (2)는 filter가 있는 경우에 대한 cost 공식입니다. 위 식에 포함된 cpu\_tuple\_cost, cpu\_operator\_cost, seq\_page\_cost 는 postgresql.conf file에 설정할 수 있는 파라미터 값이며 default 값은 각각 0.01, 0.0025, 1 입니다. $N_{\text{tuple}}$과 $N_{\text{page}}$는 각각 table에 있는 tuple 개수와 page 개수를 뜻하며 아래와 같이 query를 통해 값을 구할 수 있습니다.
 
 ```sql
 postgres=# select relpages, reltuples from pg_class where relname = 'hypersql';
@@ -489,13 +500,13 @@ postgres=# select relpages, reltuples from pg_class where relname = 'hypersql';
 (1 row)
 ```
 
-따라서 _hypersql_ table에 대한 sequential scan의 run cost는 각각
+따라서 hypersql table에 대한 sequential scan의 run cost는 각각
 
 $$
 \begin{aligned}
-run\_cost_{without\ filter} &= 0.01 \times 10000 + 1 \times 45 = 145.00 
+\text{run cost without filter} &= 0.01 \times 10000 + 1 \times 45 = 145.00 
 \newline
-run\_cost_{with\ filter} &= (0.0025 + 0.01) \times 10000 + 1 \times 45 = 170.00 
+\text{run cost with filter} &= (0.0025 + 0.01) \times 10000 + 1 \times 45 = 170.00 
 \end{aligned}
 $$
 
@@ -518,10 +529,10 @@ postgres=# explain select * from hypersql where id <= 8000;
    Filter: (id <= 8000)
 (2 rows)
 ```
-독자는 primary key인 _hypersql.id_ column에 대한 filter 절이 포함된 SQL문이 sequential scan으로 수행된 것에 의아할 수 있습니다. 아래 subsection에서 index scan의 cost estimation이 어떻게 계산되는지 확인해보고 위 플랜이 적절했는지 확인해보겠습니다. 
+독자는 primary key인 hypersql.id column에 대한 filter 절이 포함된 SQL문이 sequential scan으로 수행된 것에 의아할 수 있습니다. 아래 subsection에서 index scan의 cost estimation이 어떻게 계산되는지 확인해보고 위 플랜이 적절했는지 확인해보겠습니다. 
 
 ### 3.2.2. Index Scan Cost Estimation
-PostgreSQL이 지원하는 index의 종류가 다양하지만 index scan에 대한 cost는 cost_index()라는 공통함수를 통해 계산됩니다. Index scan에 대한 cost를 계산하기 전에 index page와 index tuple의 개수를 각각 $N_{index\ page}$, $N_{index\ tuple}$ 로 표현하고 아래와 같이 확인해볼 수 있다는 점을 말씀드립니다.
+PostgreSQL이 지원하는 index의 종류가 다양하지만 index scan에 대한 cost는 cost_index()라는 공통함수를 통해 계산됩니다. Index scan에 대한 cost를 계산하기 전에 index page와 index tuple의 개수를 각각 $N_{\text{index page}}$, $N_{\text{index tuple}}$ 로 표현하고 아래와 같이 확인해볼 수 있다는 점을 말씀드립니다.
 ```sql
 postgres=# select relpages, reltuples from pg_class where relname = 'hypersql_idx';
  relpages | reltuples 
@@ -531,9 +542,9 @@ postgres=# select relpages, reltuples from pg_class where relname = 'hypersql_id
 ```
 $$
 \begin{aligned}
-N_{index\ page} &= 10000,
+N_{\text{index page}} &= 10000,
 \newline
-N_{index\ tuple} &= 30
+N_{\text{index tuple}} &= 30
 \end{aligned}
 $$
 
@@ -541,64 +552,64 @@ $$
 Sequential scan과 다르게 index scan의 경우에는 index를 traverse 하는데 발생하는 start-up cost가 있습니다. Start-up cost의 공식은 아래와 같습니다.
 
 $$
-start\_up\_cost = \{ceil(log_2(N_{index\ tuple})) + (H_{index} + 1) \times 50\} \times cpu\_operator\_cost
+\text{start-up cost} = \{\text{ceil}(\text{log}_2(N_{\text{index tuple}})) + (H_{\text{index}} + 1) \times 50\} \times \text{cpu\_operator\_cost}
 $$
 
-위 공식에서 $H_{index}$ 는 index tree의 높이를 뜻합니다.
+위 공식에서 $H_{\text{index}}$ 는 index tree의 높이를 뜻합니다.
 
 #### Run Cost
 Run cost는 start-up cost에 비해 조금 더 복잡합니다. 우선 크게 봤을 때 아래 공식으로 계산할 수 있습니다.
 
 $$
 \begin{align}
-run\_cost &= (index\_cpu\_cost + table\_cpu\_cost) \\
-          &+ (index\_io\_cost + table\_io\_cost)
+\text{run cost} &= (\text{index\_cpu\_cost} + \text{table\_cpu\_cost}) \\
+                &+ (\text{index\_io\_cost} + \text{table\_io\_cost})
 \end{align}
 $$
 
-우선 (3)에서 등장하는 _index\_cpu\_cost_ 와 _table\_cpu\_cost_ 의 정의 먼저 정리해보겠습니다.
+우선 (3)에서 등장하는 index\_cpu\_cost 와 table\_cpu\_cost 의 정의 먼저 정리해보겠습니다.
 
 $$
 \begin{aligned}
-index\_cpu\_cost &= Selectivity \times N_{index\ tuple} \times (cpu\_index\_tuple\_cost + qual\_op\_cost),
+\text{index\_cpu\_cost} &= \text{Selectivity} \times N_{\text{index tuple}} \times (\text{cpu\_index\_tuple\_cost} + \text{qual\_op\_cost}),
 \newline
-table\_cpu\_cost &= Selectivity \times N_{tuple} \times (cpu\_tuple\_cost + qpqual\_cost)
+\text{table\_cpu\_cost} &= \text{Selectivity} \times N_{\text{tuple}} \times (\text{cpu\_tuple\_cost} + \text{qpqual\_cost})
 \end{aligned}
 $$
 
-일단 _Selectivity_ 가 눈에 띕니다. Selectivity는 index의 전체 범위 중 filter 절로 인해 선택될 범위의 비율의 예측값이며 미리 수집된 통계정보를 통해 값을 예측하게 됩니다. Selectivity는 0과 1 사이의 floating point number로 계산됩니다. 더 자세한 내용을 다루기에는 해당 section이 너무 길어질 것 같아 다음 기회에 다루도록 하겠습니다. 
+일단 Selectivity가 눈에 띕니다. Selectivity는 index의 전체 범위 중 filter 절로 인해 선택될 범위의 비율의 예측값이며 미리 수집된 통계정보를 통해 값을 예측하게 됩니다. Selectivity는 0과 1 사이의 floating point number로 계산됩니다. 더 자세한 내용을 다루기에는 해당 section이 너무 길어질 것 같아 다음 기회에 다루도록 하겠습니다. 
 
- _cpu\_index\_tuple\_cost_ 는 postgresql.conf file에서 설정할 수 있는 parameter이며 default 값은 0.005 입니다. _qual\_op\_cost_ 는 index key evaluation에 들어가는 비용이고 predicate에 따라 달라지는 값입니다. 마찬가지로 _qpqual\_cost_ 는 index key 외에 수행해야 하는 filter evaluation에 들어가는 비용이며 어떤 expression이냐에 따라 비용은 달라지게 됩니다.
+cpu\_index\_tuple\_cost 는 postgresql.conf file에서 설정할 수 있는 parameter이며 default 값은 0.005 입니다. qual\_op\_cost 는 index key evaluation에 들어가는 비용이고 predicate에 따라 달라지는 값입니다. 마찬가지로 qpqual\_cost 는 index key 외에 수행해야 하는 filter evaluation에 들어가는 비용이며 어떤 expression이냐에 따라 비용은 달라지게 됩니다.
 
-다음 (4)에서 등장하는 _index\_io\_cost_ 와 _table\_io\_cost_ 에 대해 설명해보겠습니다. 
+다음 (4)에서 등장하는 index\_io\_cost 와 table\_io\_cost 에 대해 설명해보겠습니다. 
 
 $$
 \begin{aligned}
-index\_io\_cost &= ceil(Selectivity \times N_{index\ page}) \times random\_page\_cost,
+\text{index\_io\_cost} &= \text{ceil}(\text{Selectivity} \times N_{\text{index page}}) \times \text{random\_page\_cost},
 \newline
-table\_io\_cost &= max\_io\_cost + indexCorrelation^2 \times (min\_io\_cost - max\_io\_cost)
+\text{table\_io\_cost} &= \text{max\_io\_cost} + \text{indexCorrelation}^2 \times (\text{min\_io\_cost} - \text{max\_io\_cost})
 \end{aligned}
 $$
 
-우선 _random\_page\_cost_ 는 page에 대해 random access를 할 때 들어가는 cost를 뜻하며 default 값이 4인 postgresql.conf에 저장되는 parameter입니다. 즉, $$(Selectivity \times N_{index\ page})$$ 는 index scan 시 읽게 되는 index page의 수를 뜻하기 때문에, _index\_io\_cost_ 는 읽게 되는 index page의 random acesss 비용이라고 생각하면 될 것 같습니다. 
+우선 random\_page\_cost 는 page에 대해 random access를 할 때 들어가는 cost를 뜻하며 default 값이 4인 postgresql.conf에 저장되는 parameter입니다. 즉, $(\text{Selectivity} \times N_{\text{index page}})$ 는 index scan 시 읽게 되는 index page의 수를 뜻하기 때문에, index\_io\_cost 는 읽게 되는 index page의 random acesss 비용이라고 생각하면 될 것 같습니다. 
 
-다음 _table\_io\_cost_ 의 수식을 보면 _max\_io\_cost_ 와 _min\_io\_cost_ 라는 변수가 나오는데 각각의 변수는 최악과 최고의 I/O case에서 발생하는 비용을 뜻합니다. _max\_io\_cost_ 는 table의 모든 page를 random access로 읽어올 때의 비용이고 아래와 같이 정의할 수 있습니다.
+다음 table\_io\_cost 의 수식을 보면 max\_io\_cost 와 min\_io\_cost 라는 변수가 나오는데 각각의 변수는 최악과 최고의 I/O case에서 발생하는 비용을 뜻합니다. max\_io\_cost 는 table의 모든 page를 random access로 읽어올 때의 비용이고 아래와 같이 정의할 수 있습니다.
 
 $$
-max\_io\_cost = N_{page} \times random_page_cost
+\text{max\_io\_cost} = N_{\text{page}} \times \text{random\_page\_cost}
 $$
 
-반면 _min\_io\_cost_ 는 읽게 되는 table page들을 모두 sequential 하게 읽어올 때의 비용이고 아래와 같이 정의할 수 있습니다.
+반면 min\_io\_cost 는 읽게 되는 table page들을 모두 sequential 하게 읽어올 때의 비용이고 아래와 같이 정의할 수 있습니다.
 
 $$
 \begin{aligned}
-min\_io\_cost &= ``one\ random\ page\ read\ " + ``remainders\ with\ sequential\ read\ "
+\text{min\_io\_cost} &= \text{``one random page read"} + \text{``remainders with sequential read"}
 \newline
-&= 1 \times random\_page\_cost + (ceil(Selectivity \times N_{page}) - 1) \times seq\_page\_cost
+&= 1 \times \text{random\_page\_cost} + (\text{ceil}(\text{Selectivity} \times N_{\text{page}}) - 1) \times \text{seq\_page\_cost}
 \end{aligned}
 $$
 
-마지막으로 정의해야 할 변수인 IndexCorrelation은 index tuple과 그것이 가리키는 table tuple의 저장 위치 순서를 통계적 의미에서의 상관관계를 표현하는 값입니다. 아래 예제를 통해 어떤 의미인지 살펴보겠습니다. 아래와 같이 _tbl\_corr_ 라는 table과 각 column을 key로 갖는 index를 생성해보겠습니다.
+마지막으로 정의해야 할 변수인 IndexCorrelation은 index tuple과 그것이 가리키는 table tuple의 저장 위치 순서를 통계적 의미에서의 상관관계를 표현하는 값입니다. 아래 예제를 통해 어떤 의미인지 살펴보겠습니다. 아래와 같이 tbl\_corr 라는 table과 각 column을 key로 갖는 index를 생성해보겠습니다.
 
 ```sql
 postgres=# create table tbl_corr (col_asc int, col_desc int, col_rand int);
@@ -615,7 +626,7 @@ postgres=# analyze;
 ANALYZE
 ```
 
-즉 _col\_asc_ column은 1과 1000 사이의 정수 데이터를 오름차순으로, _col\_desc_ column은 -1과 -1000 사이의 정수 데이터를 내림차순으로, _col\_rand_ column은 1과 1000 사이의 정수 데이터를 임의의 순으로 넣었습니다. 이 때 _pg\_stats_ catalog를 통해서 correlation을 조회해보면 아래와 같은 값이 출력됨을 확인할 수 있습니다. 
+즉 col\_asc column은 1과 1000 사이의 정수 데이터를 오름차순으로, col\_desc column은 -1과 -1000 사이의 정수 데이터를 내림차순으로, col\_rand column은 1과 1000 사이의 정수 데이터를 임의의 순으로 넣었습니다. 이 때 pg\_stats catalog를 통해서 correlation을 조회해보면 아래와 같은 값이 출력됨을 확인할 수 있습니다. 
 
 ```sql
 postgres=# select attname, correlation from pg_stats where tablename='tbl_corr';
@@ -629,7 +640,7 @@ postgres=# select attname, correlation from pg_stats where tablename='tbl_corr';
 
 위 결과를 해석하자면 correlation 값은 table tuple과 index tuple의 순서가 동일한 경우 1을, 순서가 역순인 경우 -1을, 그리고 순서가 무작위한 상관관계를 가질 경우 0을 갖는 것을 알 수 있습니다. 
 
-다시 _table\_io\_cost_ 의 수식으로 돌아와서 설명하면 indexCorrelation을 제곱한 값은 index tuple과 table tuple 사이에 상관관계가 있을 수록 1에 가까운 수를, 상관관계가 없을 수록 0에 가까운 수를 갖게 되고, 따라서 _table\_io\_cost_ 는 index tuple과 table tuple의 상관관계가 많을 수록 _min\_io\_cost_ 의 값에 가까운 값을, 상관관계가 적을 수록 _max\_io\_cost_ 의 값에 가까운 값을, 그리고 중간 범위의 경우 상관관계 만큼 _max\_io\_cost_ 에서 _min\_io\_cost_ 와의 차이를 차감한다고 생각하면 될 것 같습니다.
+다시 table\_io\_cost 의 수식으로 돌아와서 설명하면 indexCorrelation을 제곱한 값은 index tuple과 table tuple 사이에 상관관계가 있을 수록 1에 가까운 수를, 상관관계가 없을 수록 0에 가까운 수를 갖게 되고, 따라서 table\_io\_cost 는 index tuple과 table tuple의 상관관계가 많을 수록 min\_io\_cost 의 값에 가까운 값을, 상관관계가 적을 수록 max\_io\_cost 의 값에 가까운 값을, 그리고 중간 범위의 경우 상관관계 만큼 max\_io\_cost 에서 min\_io\_cost 와의 차이를 차감한다고 생각하면 될 것 같습니다.
 
 마지막으로 hypersql에 대한 scan을 했을 때의 index scan cost를 계산해보고 이 section을 마무리 하겠습니다. 아래 query를 위에서 실행해봤는데요.
 
@@ -645,17 +656,17 @@ postgres=# explain select * from hypersql where id <= 8000;
 
 $$
 \begin{aligned}
-total\_cost &= startup\_cost + run\_cost 
+\text{total cost} &= \text{start-up cost} + \text{run cost} 
 \newline
-&=  \{ceil(log_2(10000)) + (1 + 1) \times 50\} \times 0.025 
+&=  \{\text{ceil}(\text{log}_2(10000)) + (1 + 1) \times 50\} \times 0.025 
 \newline
 &+ 0.8 \times 10000 \times (0.005 + 0.0025)
 \newline
 &+ 0.8 \times 10000 \times (0.01 + 0)
 \newline
-&+ (ceil(0.8 \times 30) \times 4)
+&+ (\text{ceil}(0.8 \times 30) \times 4)
 \newline
-&+ 45 \times 4 + 1^2 \times ((4 + (ceil(0.8 \times 45 -1) \times 1)) - 45 \times 4)
+&+ 45 \times 4 + 1^2 \times ((4 + (\text{ceil}(0.8 \times 45 -1) \times 1)) - 45 \times 4)
 \newline
 &= 2.83 + 60.00 + 80.00 + 96.00 + 39.00
 \newline
@@ -664,6 +675,296 @@ total\_cost &= startup\_cost + run\_cost
 $$
 
 따라서 sequential scan에 비해 위 query에 대한 index scan의 cost가 확실히 크기 때문에 sequential scan을 선택한 것이 맞았다는 것을 볼 수 있습니다.
+
+### 3.2.3. Sort Cost Estimation
+마지막으로 sort operation의 cost estimation을 살펴보는 것으로 이번 section을 마무리하겠습니다. 우선 sort operation은 query processing 도중 정렬이 필요할 때 사용이 됩니다. 대표적인 예로는 사용자가 ORDER BY 구문을 사용했을 때이고, 그 외에도 merge join operation을 수행하거나 grouping, aggregate function 또는 analytic function을 수행할 때도 내부적으로 sort operation이 사용되게 됩니다.
+
+Sort operation 수행 시 정렬에 필요한 모든 tuple을 sort_mem (work_mem 에서 sort를 위해 허용한 메모리 공간. Section 2.2.1 참조) 에 올릴 수 있으면 단순히 quicksort algorithm을 사용하여 정렬을 수행하게 됩니다. 만약 sort_mem에 모든 tuple을 올릴 수 없으면 temporary file을 생성하여 부분 정렬 결과를 저장해야 하게 되어 file merge sort algorithm을 통해 정렬을 수행하게 됩니다. 
+
+#### In-memory Sort
+Sort operation을 sort_mem에서 전부 수행할 수 있는 경우 start-up cost와 run cost는 각각 quicksort에 소요되는 비용, 정렬된 tuple을 읽을 때 소요되는 비용이 됩니다. 
+
+$$
+\begin{aligned}
+\text{start-up cost} &= \text{comparison cost} \times N_{\text{tuple}} \times \text{log}_{2}(N_{\text{tuple}})
+\newline
+                     &= (2 \times \text{cpu\_operator\_cost}) \times N_{\text{tuple}} \times \text{log}_{2}(N_{\text{tuple}})
+\newline
+\text{run cost} &= \text{cpu\_operator\_cost} \times N_{\text{tuple}}
+\end{aligned}
+$$
+
+여기서 $N_{\text{tuple}}$ 은 sort operation에서 정렬해야 하는 tuple의 개수를 뜻하고, comparison cost는 cpu\_operator\_cost의 두 배로 정의됩니다.
+
+#### File Merge Sort
+
+나중에 추가하겠습니다
+
 ## 3.3. Plan Tree Generation 🌲
+이번 section에서는 Planner가 어떻게 plan tree를 생성하는지 확인해볼 것입니다. Query의 복잡도가 높아질 수록 plan tree를 생성하는 과정의 복잡도도 높아지기 때문에 한 개의 table을 대상으로 한 간단한 query를 예로 들면서 설명을 진행해보겠습니다.
+
+Plan tree를 생성하는 데에는 크게 3개의 과정을 거치게 됩니다.
+1. 전처리 작업
+2. 최저비용의 access path 찾기
+3. 최저비용의 access path로부터 plan tree 생성하기
+
+여기서 access path란 query tree로부터 plan tree를 생성하는 과정을 logical step으로 나눈 단위입니다. 예를 들어 table의 tuple을 읽는 데에는 sequential scan, index scan 등 scan 종류의 access path를 생성하여 cost를 비교하고, join을 해야 하는 경우에는 nested loop join, merge join, hash join과 같은 다양한 join 종류의 access path를 생성하여 cost를 비교합니다. 
+
+아래 subsection에서 plan tree를 생성하는 각각의 과정에 대해 살펴보도록 하겠습니다.
+
+### 3.3.1. Preprocessing
+전처리 작업은 말 그대로 query tree로부터 plan tree를 생성하는 데에 있어 간소화 할 수 있는 부분들을 미리 수행하는 것을 말합니다. 전처리 작업에는 여러 단계가 존재하지만 한 개의 table을 대상으로 한 간단한 query를 위한 전처리 작업을 정리해보겠습니다.
+
+1. Target list에 대한 간소화
+    - 예를 들어 '2 + 2'와 같은 표현식을 '4'로 변경하는 등의 간소화 작업을 수행합니다.
+2. Boolean operator에 대한 간소화
+    - 예를 들어 'NOT(NOT a)'와 같은 표현식을 'a'로 변경하는 등의 간소화 작업을 수행합니다.
+3. AND/OR 표현식 평탄화
+    - AND와 OR 표현식은 SQL 표준에서는 binary operator 이지만 PostgreSQL 내부에서는 n-ary operator로서 처리됩니다. 따라서 여러 개의 AND/OR expression이 query tree에 저장되어 있는 경우 하나의 AND/OR expression root node 하나에 여러 child로 달아주는 평탄화 작업을 수행합니다.
+
+<figure>
+  <img
+    src="https://www.interdb.jp/pg/img/fig-3-09.png"
+    alt="Flattening AND/OR expression"
+    style="display: inline-block; margin: 0 auto; width: 1024px"
+  />
+  <figcaption style="text-align: center">Fig 3.4 - Flattening AND/OR expressions</figcaption>
+</figure>
+
+### 3.3.2. Finding the Cheapest Access Path
+전처리 작업이 끝나면 완성된 query tree를 사용하여 가능한 모든 access path의 비용을 계산하고 그 중 제일 비용이 낮은 path를 선택합니다. Table scan을 위한 최저비용의 path를 찾는 방법을 우선 예제로 들어보면 아래와 같은 단계로 수행하게 됩니다.
+
+/* TODO: 최저비용 access path 찾는 방법 설명 */
+
+### 3.3.3. Creating a Plan Tree
+마지막 단계에서는 최저비용의 path를 이용하여 plan tree를 생성하는 작업을 진행합니다. Plan tree의 root에는 <a href="https://github.com/postgres/postgres/blob/master/src/include/nodes/plannodes.h">plannodes.h</a> 에 정의된 PlannedStmt 라는 구조체가 할당되게 됩니다. PlannedStmt의 주요 field를 아래 간략하게 정리해놓겠습니다.
+- commandType : SELECT, UPDATE, INSERT와 같은 operation type
+- rtable: Query에 사용되는 table의 list
+- relationOids: Query에 사용되는 table의 oid list
+- plantree: plan node로 구성된 plan tree; 각 plan node는 executor operation과 대응
+
+<details>
+<summary> PlannedStmt 구조체 보기 </summary>
+
+```c
+/* ----------------
+ *		PlannedStmt node
+ *
+ * The output of the planner is a Plan tree headed by a PlannedStmt node.
+ * PlannedStmt holds the "one time" information needed by the executor.
+ * ----------------
+ */
+typedef struct PlannedStmt
+{
+	NodeTag      type;
+	CmdType      commandType;         /* select|insert|update|delete */
+	uint32       queryId;             /* query identifier (copied from Query) */
+	bool         hasReturning;        /* is it insert|update|delete RETURNING? */
+	bool         hasModifyingCTE;     /* has insert|update|delete in WITH? */
+	bool         canSetTag;           /* do I set the command result tag? */
+	bool         transientPlan;       /* redo plan when TransactionXmin changes? */
+	bool         dependsOnRole;       /* is plan specific to current role? */
+	bool         parallelModeNeeded;  /* parallel mode required to execute? */
+	struct Plan  *planTree;           /* tree of Plan nodes */
+	List         *rtable;             /* list of RangeTblEntry nodes */
+	/* rtable indexes of target relations for INSERT/UPDATE/DELETE */
+	List         *resultRelations;    /* integer list of RT indexes, or NIL */
+	Node         *utilityStmt;        /* non-null if this is DECLARE CURSOR */
+	List         *subplans;           /* Plan trees for SubPlan expressions */
+	Bitmapset    *rewindPlanIDs;      /* indices of subplans that require REWIND */
+	List         *rowMarks;           /* a list of PlanRowMark's */
+	List         *relationOids;       /* OIDs of relations the plan depends on */
+	List         *invalItems;         /* other dependencies, as PlanInvalItems */
+	int          nParamExec;          /* number of PARAM_EXEC Params used */
+} PlannedStmt;
+```
+</details>
+<br/>
+
+여기서 planTree field가 핵심입니다. planTree field는 plan node의 list로서 되어 있으며 순서는 수행해야 하는 plan node 순의 역순으로 되어 있습니다. 즉, root에는 마지막에 수행되어야 하는 plan node가 위치해 있고, tail에는 처음에 수행되어야 하는 plan node가 위치해 있습니다. 예를 들어 아래 query에 대한 planTree는 Figure 3.5와 같이 만들어지게 됩니다.
+
+```sql
+testdb=# \d tbl_1
+     Table "public.tbl_1"
+ Column |  Type   | Modifiers 
+--------+---------+-----------
+ id     | integer | 
+ data   | integer | 
+
+testdb=# SELECT * FROM tbl_1 WHERE id < 300 ORDER BY data;
+```
+
+<figure>
+  <img
+    src="postgresql-plan-tree.png"
+    alt="Plan tree example"
+    style="display: inline-block; margin: 0 auto; width: 1024px"
+  />
+  <figcaption style="text-align: center">Fig 3.5 - Plan tree example</figcaption>
+</figure>
 
 ## 3.4. Executor and Operation Algorithms ⚙️
+이제 마지막으로 Executor에서 어떻게 Planner가 만들어놓은 plan tree를 사용하여 query를 수행하는지 알아보겠습니다. Executor의 main 동작에 대한 설명 이후에는 executor operation의 예를 들어 설명을 드릴건데, Suzuki의 블로그에는 각종 join operation에 대한 설명을 했기 때문에 여기서는 위에서 비용을 계산해보았던 sort operation을 살펴보도록 하겠습니다.
+
+### 3.4.1. Executor Framework Overview
+일단 Executor가 query를 처리하는 큰 그림은 <a href="https://github.com/postgres/postgres/tree/master/src/backend/tcop/pquery.c">pquery.c</a>에 정의된 ProcessQuery 함수에서 처리됩니다. 해당 함수의 수행 과정은 아래와 같이 간략하게 정리할 수 있습니다.
+
+1. QueryDesc 객체 생성 (CreateQueryDesc 함수 호출)
+2. Query plan state tree 생성 (ExecutorStart->InitPlan 함수 호출)
+3. Query plan 수행 (ExecutorRun 함수 호출)
+4. Query plan 수행 완료 후 해야 하는 cleanup task 수행 (ExecutorFinish 함수 호출)
+5. Query 수행에 사용한 상태정보 및 자원들 해제 (ExecutorEnd 함수 호출)
+6. QueryDesc 객체 해제 (FreeQueryDesc 함수 호출)
+
+우선 QueryDesc 구조체부터 소개해보면, 해당 구조체에는 query 수행에 필요한 초기 정보를 가지고 있으며 대표적인 field로는 Planner가 생성한 PlannedStmt와 query에 사용되는 snapshot 정보 (Chapter 5 참조) 그리고 bind parameter 정보가 있습니다.
+
+<details>
+<summary>QueryDesc 구조체 보기</summary>
+
+```c
+/* ----------------
+ *		query descriptor:
+ *
+ *	a QueryDesc encapsulates everything that the executor
+ *	needs to execute the query.
+ *
+ *	For the convenience of SQL-language functions, we also support QueryDescs
+ *	containing utility statements; these must not be passed to the executor
+ *	however.
+ * ---------------------
+ */
+typedef struct QueryDesc
+{
+	/* These fields are provided by CreateQueryDesc */
+	CmdType	         operation;           /* CMD_SELECT, CMD_UPDATE, etc. */
+	PlannedStmt      *plannedstmt;        /* planner's output (could be utility, too) */
+	const char       *sourceText;         /* source text of the query */
+	Snapshot         snapshot;            /* snapshot to use for query */
+	Snapshot         crosscheck_snapshot;	/* crosscheck for RI update/delete */
+	DestReceiver     *dest;               /* the destination for tuple output */
+	ParamListInfo    params;              /* param values being passed in */
+	QueryEnvironment *queryEnv;           /* query environment passed in */
+	int              instrument_options;  /* OR of InstrumentOption flags */
+
+	/* These fields are set by ExecutorStart */
+	TupleDesc        tupDesc;             /* descriptor for result tuples */
+	EState           *estate;             /* executor's query-wide state */
+	PlanState        *planstate;          /* tree of per-plan-node state */
+
+	/* This field is set by ExecutorRun */
+	bool             already_executed;    /* true if previously executed */
+
+	/* This is always set NULL by the core system, but plugins can change it */
+	struct Instrumentation *totaltime;    /* total time spent in ExecutorRun */
+} QueryDesc;
+```
+</details>
+<br/>
+
+그 다음 PlannedStmt를 iteration 하면서 PlanState라는 구조체로 이루어진 binary tree를 만들게 됩니다. PlanState에는 execution run-time에 필요한 정보들과 plan node operation의 algorithm을 구현해놓은 함수의 function pointer가 있습니다. 이와 동시에 읽어야 하는 relation의 file을 open하고, junk filter에 대한 초기화 작업을 진행합니다. Junk filter란 Executor 내부에서만 보는 attribute를 top level plan node에서 filtering 하기 위한 mechanism인데, 예를 들면 ctid같은 정보는 Executor 내부에서만 필요하기 때문에 execution run-time에는 살아있지만 client에게 결과를 보낼 때는 출력이 되면 안되기 때문에 top level node에서 filtering 해줘야 합니다. 이와 같은 초기화 작업을 마치고 나면 다음은 query plan을 수행하는 ExecutorRun 단계로 넘어가게 됩니다.
+
+<details>
+<summary>PlanState 구조체 보기</summary>
+
+```c
+/* ----------------
+ *		PlanState node
+ *
+ * We never actually instantiate any PlanState nodes; this is just the common
+ * abstract superclass for all PlanState-type nodes.
+ * ----------------
+ */
+typedef struct PlanState
+{
+	NodeTag   type;
+
+	Plan      *plan;        /* associated Plan node */
+
+	EState    *state;       /* at execution time, states of individual
+                           * nodes point to one EState for the whole
+                           * top-level plan */
+
+	ExecProcNodeMtd ExecProcNode;	/* function to return next tuple */
+	ExecProcNodeMtd ExecProcNodeReal; /* actual function, if above is a
+                                     * wrapper */
+
+	Instrumentation *instrument;	/* Optional runtime stats for this node */
+	WorkerInstrumentation *worker_instrument;	/* per-worker instrumentation */
+
+	/* Per-worker JIT instrumentation */
+	struct SharedJitInstrumentation *worker_jit_instrument;
+
+	/*
+	 * Common structural data for all Plan types.  These links to subsidiary
+	 * state trees parallel links in the associated plan tree (except for the
+	 * subPlan list, which does not exist in the plan tree).
+	 */
+	ExprState  *qual;			/* boolean qual condition */
+	struct PlanState *lefttree; /* input plan tree(s) */
+	struct PlanState *righttree;
+
+	List	   *initPlan;		/* Init SubPlanState nodes (un-correlated expr
+								 * subselects) */
+	List	   *subPlan;		/* SubPlanState nodes in my expressions */
+
+	/*
+	 * State for management of parameter-change-driven rescanning
+	 */
+	Bitmapset  *chgParam;		/* set of IDs of changed Params */
+
+	/*
+	 * Other run-time state needed by most if not all node types.
+	 */
+	TupleDesc	ps_ResultTupleDesc; /* node's return type */
+	TupleTableSlot *ps_ResultTupleSlot; /* slot for my result tuples */
+	ExprContext *ps_ExprContext;	/* node's expression-evaluation context */
+	ProjectionInfo *ps_ProjInfo;	/* info for doing tuple projection */
+
+	bool		async_capable;	/* true if node is async-capable */
+
+	/*
+	 * Scanslot's descriptor if known. This is a bit of a hack, but otherwise
+	 * it's hard for expression compilation to optimize based on the
+	 * descriptor, without encoding knowledge about all executor nodes.
+	 */
+	TupleDesc	scandesc;
+
+	/*
+	 * Define the slot types for inner, outer and scanslots for expression
+	 * contexts with this state as a parent.  If *opsset is set, then
+	 * *opsfixed indicates whether *ops is guaranteed to be the type of slot
+	 * used. That means that every slot in the corresponding
+	 * ExprContext.ecxt_*tuple will point to a slot of that type, while
+	 * evaluating the expression.  If *opsfixed is false, but *ops is set,
+	 * that indicates the most likely type of slot.
+	 *
+	 * The scan* fields are set by ExecInitScanTupleSlot(). If that's not
+	 * called, nodes can initialize the fields themselves.
+	 *
+	 * If outer/inneropsset is false, the information is inferred on-demand
+	 * using ExecGetResultSlotOps() on ->righttree/lefttree, using the
+	 * corresponding node's resultops* fields.
+	 *
+	 * The result* fields are automatically set when ExecInitResultSlot is
+	 * used (be it directly or when the slot is created by
+	 * ExecAssignScanProjectionInfo() /
+	 * ExecConditionalAssignProjectionInfo()).  If no projection is necessary
+	 * ExecConditionalAssignProjectionInfo() defaults those fields to the scan
+	 * operations.
+	 */
+	const TupleTableSlotOps *scanops;
+	const TupleTableSlotOps *outerops;
+	const TupleTableSlotOps *innerops;
+	const TupleTableSlotOps *resultops;
+	bool		scanopsfixed;
+	bool		outeropsfixed;
+	bool		inneropsfixed;
+	bool		resultopsfixed;
+	bool		scanopsset;
+	bool		outeropsset;
+	bool		inneropsset;
+	bool		resultopsset;
+} PlanState;
+```
+</details>
+<br/>
