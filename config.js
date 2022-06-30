@@ -1,6 +1,6 @@
 const config = {
   gatsby: {
-    pathPrefix: '/',
+    pathPrefix: '/postgresql-knowledge',
     siteUrl: 'https://hasura.io',
     gaTrackingId: null,
     trailingSlash: false,

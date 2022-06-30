@@ -62,6 +62,7 @@
     "format": "prettier --write \"src/**/*.{js,jsx,css,json}\"",
     "lint": "eslint --fix \"src/**/*.{js,jsx}\"",
     "develop": "NODE_OPTIONS=--openssl-legacy-provider gatsby develop",
+    "deploy": "gatsby build --prefix-paths && gh-pages -d public -b gh-pages",
     "serve": "gatsby serve",
     "clean": "gatsby clean",
     "test": "echo \"Write tests! -> https://gatsby.dev/unit-testing\" && exit 1"
@@ -75,6 +76,7 @@
     "eslint-plugin-prettier": "^3.4.0",
     "eslint-plugin-react": "^7.23.2",
     "gatsby-plugin-remove-trailing-slashes": "^3.4.0",
+    "gh-pages": "^4.0.0",
     "prettier": "^2.2.1",
     "prism-react-renderer": "^1.2.0"
   }
