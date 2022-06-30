@@ -1,3 +1,7 @@
+---
+title: "Chapter 1. Data Layout"
+---
+
 1장에서는 PostgreSQL이 data를 어떤 구조로 관리하는지 간략하게 살펴보겠습니다. Data가 논리적인 level에서 어떻게 관리되고 있고, 그리고 그것들이 OS level에서 어떻게 mapping 되는지 살펴봅니다. 조금 더 나아가 data가 저장되는 기본 단위인 block에 대해 소개하고 block에 대한 read/write가 어떤 방식으로 처리되는지 살펴봅니다. 
 
 Home 화면에서도 언급했지만 해당 요약은 Hironobu Suzuki의 blog "The Internals of PostgreSQL"를 기반으로 작성된 내용인 점을 다시 한번 말씀드립니다.

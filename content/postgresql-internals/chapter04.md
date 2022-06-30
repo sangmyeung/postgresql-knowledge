@@ -1,5 +1,6 @@
-# 4. Foreign Data Wrappers (FDW)
-
+---
+title: "Chapter 4. Foreign Data Wrappers"
+---
 ## 4.1. Foreign Data Wrappers (FDW)
 
 - foreign table : **remote** server에 있는 table(in SQL Management of External Data, SQL/MED)

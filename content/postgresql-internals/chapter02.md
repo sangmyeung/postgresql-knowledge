@@ -1,3 +1,7 @@
+---
+title: "Chapter 2. Process And Memory Architecture"
+---
+
 2장에서는 PostgreSQL prcoess 구조와 메모리 구조에 대해 알아볼 것 입니다. 2장의 내용을 잘 이해하면 이후 챕터에서 배우게 될 내용에 큰 도움이 될 것이니 잘 숙지하면 좋을 것 같습니다.  
 
 ---
