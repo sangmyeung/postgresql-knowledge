@@ -487,14 +487,16 @@ Indexes:
 첫번째로 cost_seqscan() 함수로 계산되는 sequential scan의 cost estimation에 대해 알아보겠습니다. Sequential scan의 start-up cost는 항상 0으로 계산되고 run cost는 아래의 수식으로 정의됩니다.
 
 $$
-\begin{align}
+\begin{aligned}
 \text{run cost without filter} &= \text{cpu\_tuple\_cost} \times N_{\text{tuple}} + \text{seq\_page\_cost} \times N_{\text{page}}
 \newline
-\text{run cost with filter} &= (\text{cpu\_tuple\_cost} + \text{cpu\_operator\_cost}) \times N_{\text{tuple}} + \text{seq\_page\_cost} \times N_{\text{page}}
-\end{align}
+\text{run cost with filter} &= (\text{cpu\_tuple\_cost} + \text{cpu\_operator\_cost}) \times N_{\text{tuple}} 
+\newline
+                            &+ \text{seq\_page\_cost} \times N_{\text{page}}
+\end{aligned}
 $$
 
-위 식 중 (1)은 filter가 없는 경우, (2)는 filter가 있는 경우에 대한 cost 공식입니다. 위 식에 포함된 cpu\_tuple\_cost, cpu\_operator\_cost, seq\_page\_cost 는 postgresql.conf file에 설정할 수 있는 파라미터 값이며 default 값은 각각 0.01, 0.0025, 1 입니다. $N_{\text{tuple}}$과 $N_{\text{page}}$는 각각 table에 있는 tuple 개수와 page 개수를 뜻하며 아래와 같이 query를 통해 값을 구할 수 있습니다.
+위 식에 포함된 cpu\_tuple\_cost, cpu\_operator\_cost, seq\_page\_cost 는 postgresql.conf file에 설정할 수 있는 파라미터 값이며 default 값은 각각 0.01, 0.0025, 1 입니다. $N_{\text{tuple}}$과 $N_{\text{page}}$는 각각 table에 있는 tuple 개수와 page 개수를 뜻하며 아래와 같이 query를 통해 값을 구할 수 있습니다.
 
 ```sql
 postgres=# select relpages, reltuples from pg_class where relname = 'hypersql';
@@ -536,7 +538,7 @@ postgres=# explain select * from hypersql where id <= 8000;
 독자는 primary key인 hypersql.id column에 대한 filter 절이 포함된 SQL문이 sequential scan으로 수행된 것에 의아할 수 있습니다. 아래 subsection에서 index scan의 cost estimation이 어떻게 계산되는지 확인해보고 위 플랜이 적절했는지 확인해보겠습니다. 
 
 ### 3.2.2. Index Scan Cost Estimation
-PostgreSQL이 지원하는 index의 종류가 다양하지만 index scan에 대한 cost는 cost_index()라는 공통함수를 통해 계산됩니다. Index scan에 대한 cost를 계산하기 전에 index page와 index tuple의 개수를 각각 $N_{\text{index page}}$, $N_{\text{index tuple}}$ 로 표현하고 아래와 같이 확인해볼 수 있다는 점을 말씀드립니다.
+PostgreSQL이 지원하는 index의 종류가 다양하지만 index scan에 대한 cost는 cost\_index()라는 공통함수를 통해 계산됩니다. Index scan에 대한 cost를 계산하기 전에 index page와 index tuple의 개수를 각각 $N_{\text{index page}}$와 $N_{\text{index tuple}}$ 로 표현하고 아래와 같이 확인해 볼 수 있다는 점을 말씀드립니다.
 ```sql
 postgres=# select relpages, reltuples from pg_class where relname = 'hypersql_idx';
  relpages | reltuples 
@@ -702,7 +704,7 @@ $$
 
 #### File Merge Sort
 
-나중에 추가하겠습니다
+TODO: 나중에 추가하겠습니다
 
 ## 3.3. Plan Tree Generation 🌲
 이번 section에서는 Planner가 어떻게 plan tree를 생성하는지 확인해볼 것입니다. Query의 복잡도가 높아질 수록 plan tree를 생성하는 과정의 복잡도도 높아지기 때문에 한 개의 table을 대상으로 한 간단한 query를 예로 들면서 설명을 진행해보겠습니다.
@@ -738,7 +740,7 @@ Plan tree를 생성하는 데에는 크게 3개의 과정을 거치게 됩니다
 ### 3.3.2. Finding the Cheapest Access Path
 전처리 작업이 끝나면 완성된 query tree를 사용하여 가능한 모든 access path의 비용을 계산하고 그 중 제일 비용이 낮은 path를 선택합니다. Table scan을 위한 최저비용의 path를 찾는 방법을 우선 예제로 들어보면 아래와 같은 단계로 수행하게 됩니다.
 
-/* TODO: 최저비용 access path 찾는 방법 설명 */
+TODO: 최저비용 access path 찾는 방법 설명
 
 ### 3.3.3. Creating a Plan Tree
 마지막 단계에서는 최저비용의 path를 이용하여 plan tree를 생성하는 작업을 진행합니다. Plan tree의 root에는 <a href="https://github.com/postgres/postgres/blob/master/src/include/nodes/plannodes.h">plannodes.h</a> 에 정의된 PlannedStmt 라는 구조체가 할당되게 됩니다. PlannedStmt의 주요 field를 아래 간략하게 정리해놓겠습니다.
@@ -972,3 +974,9 @@ typedef struct PlanState
 ```
 </details>
 <br/>
+
+TODO: ExecutorRun 내부동작 설명
+
+### 3.4.2. Sort Operation
+
+TODO: Sort operation 동작 설명
